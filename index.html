@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DLSZ Campus Map</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <style>
+    #map { height: 100vh; }
+    .popup-title { font-weight: bold; margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet Libraries -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([14.409324791788787, 121.01956407507454], 18);
+
+    // Use online tiles OR offline tiles
+    const useOffline = false; // Set to true for offline
+
+    const tileLayer = useOffline
+      ? L.tileLayer('./tiles/{z}/{x}/{y}.png', { maxZoom: 19 })
+      : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OSM contributors'
+        });
+
+    tileLayer.addTo(map);
+
+    // Search bar control
+    L.Control.geocoder().addTo(map);
+
+    // Facility locations
+    const facilities = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {
+            "name": "Sports Pavilion",
+            "description": "Basketball/volleyball courts + weight rooms + track"
+          },
+          "geometry": { "type": "Point", "coordinates": [121.0191, 14.4095] }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "name": "St. La Salle Building",
+            "description": "Classrooms Gr5–10 + LRC + clinic"
+          },
+          "geometry": { "type": "Point", "coordinates": [121.0200, 14.4090] }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "name": "Cadlum Hall",
+            "description": "Canteen + Gym 2 (Food stalls available inside)"
+          },
+          "geometry": { "type": "Point", "coordinates": [121.0198, 14.4086] }
+        }
+      ]
+    };
+
+    // Create marker layer and store markers
+    const markers = L.geoJSON(facilities, {
+      onEachFeature: (feature, layer) => {
+        const { name, description } = feature.properties;
+        layer.bindPopup(`<div class="popup-title">${name}</div>${description}`);
+        layer.on('click', () => {
+          if (routingControl) map.removeControl(routingControl);
+          routingControl = L.Routing.control({
+            waypoints: [L.latLng(map.getCenter()), layer.getLatLng()],
+            routeWhileDragging: false
+          }).addTo(map);
+        });
+      },
+      pointToLayer: (feature, latlng) =>
+        L.circleMarker(latlng, {
+          radius: 6,
+          fillColor: feature.properties.name === "Cadlum Hall" ? "blue" : "#007700",
+          color: "#003300",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        })
+    }).addTo(map);
+
+    let routingControl = null;
+  </script>
+</body>
+</html>
