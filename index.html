@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>DLSZ Campus Map</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <style>
@@ -13,86 +13,143 @@
 </head>
 <body>
   <div id="map"></div>
-
-  <!-- Leaflet Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 
   <script>
-    // Initialize map
+    const useOffline = false;
+
     const map = L.map('map').setView([14.409324791788787, 121.01956407507454], 18);
 
-    // Use online tiles OR offline tiles
-    const useOffline = false; // Set to true for offline
-
     const tileLayer = useOffline
-      ? L.tileLayer('./tiles/{z}/{x}/{y}.png', { maxZoom: 19 })
+      ? L.tileLayer('./tiles/{z}/{x}/{y}.png', { maxZoom: 5 })
       : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OSM contributors'
+          attribution: '&copy; OpenStreetMap contributors'
         });
 
     tileLayer.addTo(map);
-
-    // Search bar control
-    L.Control.geocoder().addTo(map);
-
-    // Facility locations
+    let userLocation = null;
+    map.locate({ setView: false, watch: true, enableHighAccuracy: true });
+    map.on("locationfound", function (e) {
+      userLocation = e.latlng;
+      L.circleMarker(userLocation, {
+        radius: 6,
+        fillColor: "red",
+        color: "darkred",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map).bindPopup("You are here").openPopup();
+    });
     const facilities = {
       "type": "FeatureCollection",
       "features": [
         {
           "type": "Feature",
-          "properties": {
-            "name": "Sports Pavilion",
-            "description": "Basketball/volleyball courts + weight rooms + track"
-          },
-          "geometry": { "type": "Point", "coordinates": [121.0191, 14.4095] }
+          "properties": { "name": "Sports Pavilion", "description": "Basketball/volleyball courts + weight rooms + track" },
+          "geometry": { "type": "Point", "coordinates": [121.01942654343324, 14.410270847779808] }
         },
         {
           "type": "Feature",
-          "properties": {
-            "name": "St. La Salle Building",
-            "description": "Classrooms Gr5–10 + LRC + clinic"
-          },
-          "geometry": { "type": "Point", "coordinates": [121.0200, 14.4090] }
+          "properties": { "name": "DLSZ Swimming Pool", "description": "50m pool near softball field" },
+          "geometry": { "type": "Point", "coordinates": [121.01974014645747, 14.411359918381079] }
         },
         {
           "type": "Feature",
-          "properties": {
-            "name": "Cadlum Hall",
-            "description": "Canteen + Gym 2 (Food stalls available inside)"
-          },
-          "geometry": { "type": "Point", "coordinates": [121.0198, 14.4086] }
+          "properties": { "name": "DLSZ Football Field", "description": "Artificial turf + 100m track" },
+          "geometry": { "type": "Point", "coordinates": [121.02010774144996, 14.410464726257546] }
+        },
+        {
+          "type": "Feature",
+          "properties": { "name": "Mutien Marie Building", "description": "Admin, Registrar, Bookstore" },
+          "geometry": { "type": "Point", "coordinates": [121.0204979962475, 14.409789984645938] }
+        },
+        {
+          "type": "Feature",
+          "properties": { "name": "La Salle Building", "description": "Grades 5–10 Classrooms, LRC, Clinic" },
+          "geometry": { "type": "Point", "coordinates": [121.020193, 14.409320] }
+        },
+        {
+          "type": "Feature",
+          "properties": { "name": "Cadlum Hall & St. Leo Flavius Hall", "description": "Food stalls available inside" },
+          "geometry": { "type": "Point", "coordinates": [121.01930907233792, 14.409681840093448] }
+        },
+        {
+          "type": "Feature",
+          "properties": { "name": "Angelo King CPA", "description": "Theater and rehearsal rooms" },
+          "geometry": { "type": "Point", "coordinates": [121.01960360428252, 14.40963968711415] }
+        },
+        {
+          "type": "Feature",
+          "properties": { "name": "Br. Ceci Hojilla FSC or CLF", "description": "Lasallian Formation" },
+          "geometry": { "type": "Point", "coordinates": [121.02098355662145, 14.408766160756606] }
+        },
+        {
+          "type": "Feature",
+          "properties": { "name": "Our Lady of the Star Chapel", "description": "DLSZ Chapel" },
+          "geometry": { "type": "Point", "coordinates": [121.02067650009145, 14.408615023967148] }
         }
       ]
     };
+    let routingControl = null;
 
-    // Create marker layer and store markers
-    const markers = L.geoJSON(facilities, {
+    L.geoJSON(facilities, {
       onEachFeature: (feature, layer) => {
         const { name, description } = feature.properties;
         layer.bindPopup(`<div class="popup-title">${name}</div>${description}`);
-        layer.on('click', () => {
-          if (routingControl) map.removeControl(routingControl);
+        layer.on("click", () => {
+          if (!userLocation) {
+            alert("Waiting for GPS location...");
+            return;
+          }
+          if (routingControl) {
+            map.removeControl(routingControl);
+          }
           routingControl = L.Routing.control({
-            waypoints: [L.latLng(map.getCenter()), layer.getLatLng()],
+            waypoints: [
+              userLocation,
+              layer.getLatLng()
+            ],
             routeWhileDragging: false
           }).addTo(map);
         });
-      },
-      pointToLayer: (feature, latlng) =>
-        L.circleMarker(latlng, {
-          radius: 6,
-          fillColor: feature.properties.name === "Cadlum Hall" ? "blue" : "#007700",
-          color: "#003300",
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.8
-        })
+      }
     }).addTo(map);
+    const customGeocoder = function(query) {
+      const results = [];
+      facilities.features.forEach(feature => {
+        const name = feature.properties.name;
+        if (name.toLowerCase().includes(query.toLowerCase())) {
+          results.push({
+            name: name,
+            center: L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]),
+            properties: feature.properties
+          });
+        }
+      });
+      return results;
+    };
+    L.Control.geocoder({
+      defaultMarkGeocode: false,
+      geocoder: {
+        geocode: function(query, cb) {
+          cb(customGeocoder(query));
+        }
+      }
+    })
+    .on('markgeocode', function(e) {
+      const center = e.geocode.center;
+      const name = e.geocode.properties.name;
+      const description = e.geocode.properties.description;
 
-    let routingControl = null;
+      map.setView(center, 19);
+      L.popup()
+        .setLatLng(center)
+        .setContent(`<div class="popup-title">${name}</div>${description}`)
+        .openOn(map);
+    })
+    .addTo(map);
   </script>
 </body>
 </html>
