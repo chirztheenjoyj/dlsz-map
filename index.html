@@ -2,154 +2,193 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>DLSZ Campus Map</title>
+  <title>DLSZ Fun Indoor Navigation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <style>
     #map { height: 100vh; }
-    .popup-title { font-weight: bold; margin-bottom: 5px; }
+    .directions {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: rgba(255, 240, 240, 0.9);
+      padding: 12px; border-radius: 8px;
+      font-family: Arial, sans-serif;
+      color: darkred;
+      z-index: 1000;
+      max-width: 220px;
+    }
+    .directions h4 { margin: 0 0 8px; font-size: 1.1em; color: black; }
+    .directions ol { padding-left: 16px; margin: 0; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 
-  <script>
-    const useOffline = false;
+<div id="map"></div>
+<div id="directions-panel" class="directions" style="display:none;">
+  <h4>🧭 Directions</h4>
+  <ol id="steps"></ol>
+</div>
 
-    const map = L.map('map').setView([14.409324791788787, 121.01956407507454], 18);
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-    const tileLayer = useOffline
-      ? L.tileLayer('./tiles/{z}/{x}/{y}.png', { maxZoom: 5 })
-      : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors'
-        });
+<script>
+const map = L.map('map').setView([14.4093, 121.0195], 18);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
-    tileLayer.addTo(map);
-    let userLocation = null;
-    map.locate({ setView: false, watch: true, enableHighAccuracy: true });
-    map.on("locationfound", function (e) {
-      userLocation = e.latlng;
-      L.circleMarker(userLocation, {
-        radius: 6,
-        fillColor: "red",
-        color: "darkred",
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.8
-      }).addTo(map).bindPopup("You are here").openPopup();
+const userIcon = L.divIcon({
+  html: '🚶‍♂️',
+  className: '',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
+const userMarker = L.marker([0, 0], {
+  icon: userIcon
+}).addTo(map);
+
+map.locate({ setView: true, maxZoom: 19, watch: true });
+map.on('locationfound', function (e) {
+  userMarker.setLatLng(e.latlng);
+});
+
+const buildings = [
+  { name: "Sports Pavilion", coords: [14.4102708, 121.0194265], info: "Gym and sports area" },
+  { name: "DLSZ Football Field", coords: [14.4104647, 121.0201077], info: "Football field & track" },
+  { name: "Mutien Marie Building", coords: [14.4097899, 121.0204980], info: "Admin and registrar" },
+  { name: "La Salle Building", coords: [14.4093200, 121.0201930], info: "Classrooms and LRC" },
+  { name: "Cadlum Hall & St. Leo Flavius Hall", coords: [14.4096818, 121.0193090], info: "Cafeteria and hall" },
+  { name: "Angelo King CPA", coords: [14.4096396, 121.0196036], info: "Theater and arts rooms" },
+  { name: "Br. Ceci Hojilla FSC or CLF", coords: [14.4087662, 121.0209836], info: "Formation and chapel" },
+  { name: "Our Lady of the Star Chapel", coords: [14.4086150, 121.0206765], info: "Main chapel" },
+  { name: "St. Joseph Building", coords: [14.410289252625368, 121.01894337355556], info: "St. Joseph Building" },
+  { name: "Gym 3", coords: [14.410508, 121.018902], info: "Gym 3 Area" },
+  { name: "School Fountain", coords: [14.409468, 121.019594], info: "Fountain landmark" },
+  { name: "Debbie Decena Auditorium", coords: [14.409014, 121.020375], info: "Auditorium and event space" }
+];
+
+const nodeMap = {}, adjacencyList = {};
+let start = null, end = null, routeLayer = null;
+
+buildings.forEach(b => {
+  nodeMap[b.name] = b.coords;
+  adjacencyList[b.name] = [];
+  L.marker(b.coords).addTo(map).bindPopup(`<b>${b.name}</b><br>${b.info}`)
+    .on('click', () => {
+      if (!start) {
+        start = b.name;
+        alert('📍 Start: ' + b.name);
+      } else if (!end) {
+        end = b.name;
+        if (start === end) {
+          alert('Pick different destination!');
+          start = end = null;
+          return;
+        }
+        computeRoute(start, end);
+        start = end = null;
+      }
     });
-    const facilities = {
-      "type": "FeatureCollection",
-      "features": [
-        {
-          "type": "Feature",
-          "properties": { "name": "Sports Pavilion", "description": "Basketball/volleyball courts + weight rooms + track" },
-          "geometry": { "type": "Point", "coordinates": [121.01942654343324, 14.410270847779808] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "DLSZ Swimming Pool", "description": "50m pool near softball field" },
-          "geometry": { "type": "Point", "coordinates": [121.01974014645747, 14.411359918381079] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "DLSZ Football Field", "description": "Artificial turf + 100m track" },
-          "geometry": { "type": "Point", "coordinates": [121.02010774144996, 14.410464726257546] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "Mutien Marie Building", "description": "Admin, Registrar, Bookstore" },
-          "geometry": { "type": "Point", "coordinates": [121.0204979962475, 14.409789984645938] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "La Salle Building", "description": "Grades 5–10 Classrooms, LRC, Clinic" },
-          "geometry": { "type": "Point", "coordinates": [121.020193, 14.409320] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "Cadlum Hall & St. Leo Flavius Hall", "description": "Food stalls available inside" },
-          "geometry": { "type": "Point", "coordinates": [121.01930907233792, 14.409681840093448] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "Angelo King CPA", "description": "Theater and rehearsal rooms" },
-          "geometry": { "type": "Point", "coordinates": [121.01960360428252, 14.40963968711415] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "Br. Ceci Hojilla FSC or CLF", "description": "Lasallian Formation" },
-          "geometry": { "type": "Point", "coordinates": [121.02098355662145, 14.408766160756606] }
-        },
-        {
-          "type": "Feature",
-          "properties": { "name": "Our Lady of the Star Chapel", "description": "DLSZ Chapel" },
-          "geometry": { "type": "Point", "coordinates": [121.02067650009145, 14.408615023967148] }
-        }
-      ]
-    };
-    let routingControl = null;
+});
 
-    L.geoJSON(facilities, {
-      onEachFeature: (feature, layer) => {
-        const { name, description } = feature.properties;
-        layer.bindPopup(`<div class="popup-title">${name}</div>${description}`);
-        layer.on("click", () => {
-          if (!userLocation) {
-            alert("Waiting for GPS location...");
-            return;
-          }
-          if (routingControl) {
-            map.removeControl(routingControl);
-          }
-          routingControl = L.Routing.control({
-            waypoints: [
-              userLocation,
-              layer.getLatLng()
-            ],
-            routeWhileDragging: false
-          }).addTo(map);
-        });
-      }
-    }).addTo(map);
-    const customGeocoder = function(query) {
-      const results = [];
-      facilities.features.forEach(feature => {
-        const name = feature.properties.name;
-        if (name.toLowerCase().includes(query.toLowerCase())) {
-          results.push({
-            name: name,
-            center: L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]),
-            properties: feature.properties
-          });
-        }
-      });
-      return results;
-    };
-    L.Control.geocoder({
-      defaultMarkGeocode: false,
-      geocoder: {
-        geocode: function(query, cb) {
-          cb(customGeocoder(query));
-        }
-      }
-    })
-    .on('markgeocode', function(e) {
-      const center = e.geocode.center;
-      const name = e.geocode.properties.name;
-      const description = e.geocode.properties.description;
+function addEdge(a, b) {
+  const [la, lo] = nodeMap[a], [lb, lo2] = nodeMap[b];
+  const dist = Math.hypot(la - lb, lo - lo2);
+  adjacencyList[a].push({ node: b, dist });
+  adjacencyList[b].push({ node: a, dist });
+}
 
-      map.setView(center, 19);
-      L.popup()
-        .setLatLng(center)
-        .setContent(`<div class="popup-title">${name}</div>${description}`)
-        .openOn(map);
-    })
-    .addTo(map);
-  </script>
+addEdge("Sports Pavilion", "Gym 3");
+addEdge("Gym 3", "St. Joseph Building");
+addEdge("Sports Pavilion", "Angelo King CPA");
+addEdge("Angelo King CPA", "Cadlum Hall & St. Leo Flavius Hall");
+addEdge("Cadlum Hall & St. Leo Flavius Hall", "School Fountain");
+addEdge("School Fountain", "La Salle Building");
+addEdge("La Salle Building", "Mutien Marie Building");
+addEdge("Mutien Marie Building", "Br. Ceci Hojilla FSC or CLF");
+addEdge("Br. Ceci Hojilla FSC or CLF", "Our Lady of the Star Chapel");
+addEdge("La Salle Building", "DLSZ Football Field");
+addEdge("Debbie Decena Auditorium", "Mutien Marie Building");
+addEdge("Debbie Decena Auditorium", "La Salle Building");
+
+function dijkstra(s, e) {
+  const dist = {}, prev = {};
+  Object.keys(adjacencyList).forEach(n => {
+    dist[n] = 1e9;
+    prev[n] = null;
+  });
+  dist[s] = 0;
+  const Q = Object.keys(dist);
+  while (Q.length) {
+    Q.sort((a, b) => dist[a] - dist[b]);
+    const u = Q.shift();
+    if (u === e) break;
+    adjacencyList[u].forEach(({ node: vn, dist: d2 }) => {
+      if (dist[u] + d2 < dist[vn]) {
+        dist[vn] = dist[u] + d2;
+        prev[vn] = u;
+      }
+    });
+  }
+  const path = [];
+  let u = e;
+  while (u) {
+    path.unshift(u);
+    u = prev[u];
+  }
+  return path;
+}
+
+function getDirection(prev, current, next) {
+  const angle = (p1, p2) => Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+  const deg = x => x * (180 / Math.PI);
+  const a1 = angle(prev, current);
+  const a2 = angle(current, next);
+  const delta = deg(a2 - a1);
+  const normalized = ((delta + 360) % 360);
+  if (normalized < 30 || normalized > 330) return "Go straight";
+  if (normalized >= 30 && normalized <= 150) return "Turn right";
+  if (normalized >= 210 && normalized <= 330) return "Turn left";
+  return "Continue";
+}
+
+function computeRoute(a, b) {
+  const p = dijkstra(a, b);
+  if (routeLayer) map.removeLayer(routeLayer);
+  const coords = p.map(n => nodeMap[n]);
+  routeLayer = L.polyline(coords, { color: '#90ee90', weight: 5, dashArray: '5,5' }).addTo(map);
+  map.fitBounds(routeLayer.getBounds());
+
+  const panel = document.getElementById('directions-panel');
+  const ol = document.getElementById('steps');
+  ol.innerHTML = '';
+  for (let i = 0; i < p.length; i++) {
+    if (i === 0) ol.innerHTML += `<li>Start at ${p[i]}</li>`;
+    else if (i === p.length - 1) ol.innerHTML += `<li>Arrive at ${p[i]}</li>`;
+    else {
+      const dir = getDirection(nodeMap[p[i - 1]], nodeMap[p[i]], nodeMap[p[i + 1]]);
+      ol.innerHTML += `<li>${dir} to ${p[i + 1]}</li>`;
+    }
+  }
+  panel.style.display = 'block';
+}
+
+L.Control.geocoder({
+  defaultMarkGeocode: false,
+  geocoder: {
+    geocode(q, cb) {
+      cb(buildings.filter(b => b.name.toLowerCase().includes(q.toLowerCase()))
+        .map(b => ({ name: b.name, center: L.latLng(...b.coords), properties: b })));
+    }
+  }
+}).on('markgeocode', e => {
+  map.setView(e.geocode.center, 19);
+  L.popup().setLatLng(e.geocode.center)
+    .setContent(`<b>${e.geocode.name}</b><br>${e.geocode.properties.info}`)
+    .openOn(map);
+}).addTo(map);
+</script>
 </body>
 </html>
