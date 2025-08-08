@@ -2,32 +2,68 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>DLSZ Fun Indoor Navigation</title>
+  <title>DLSZ Interactive Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <style>
     #map { height: 100vh; }
+
     .directions {
       position: absolute;
-      top: 10px; left: 10px;
       background: rgba(255, 240, 240, 0.9);
-      padding: 12px; border-radius: 8px;
+      padding: 12px;
+      border-radius: 8px;
       font-family: Arial, sans-serif;
       color: darkred;
       z-index: 1000;
       max-width: 220px;
     }
+
     .directions h4 { margin: 0 0 8px; font-size: 1.1em; color: black; }
     .directions ol { padding-left: 16px; margin: 0; }
+
+    #toggle-box {
+      top: 10px;
+      right: 10px;
+      left: auto;
+    }
+
+    /* ✨ Popup content style */
+    .leaflet-popup-content {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .leaflet-popup-content h3 {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .leaflet-popup-content ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .leaflet-popup-content p {
+      margin: 4px 0;
+    }
   </style>
 </head>
 <body>
 
 <div id="map"></div>
-<div id="directions-panel" class="directions" style="display:none;">
-  <h4>🧭 Directions</h4>
+
+<!-- 📍 Direction panel -->
+<div id="directions-panel" class="directions" style="display:none; top: 60px; left: 10px;">
+  <h4>Directions</h4>
   <ol id="steps"></ol>
+</div>
+
+<!-- 🧭 Dropdown toggle -->
+<div id="toggle-box" class="directions">
+  <label for="mode-select">Mode:</label>
+  <select id="mode-select">
+    <option value="directions" selected>Show Directions</option>
+    <option value="info">Show Information</option>
+  </select>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -45,9 +81,7 @@ const userIcon = L.divIcon({
   iconSize: [24, 24],
   iconAnchor: [12, 12]
 });
-const userMarker = L.marker([0, 0], {
-  icon: userIcon
-}).addTo(map);
+const userMarker = L.marker([0, 0], { icon: userIcon }).addTo(map);
 
 map.locate({ setView: true, maxZoom: 19, watch: true });
 map.on('locationfound', function (e) {
@@ -75,22 +109,82 @@ let start = null, end = null, routeLayer = null;
 buildings.forEach(b => {
   nodeMap[b.name] = b.coords;
   adjacencyList[b.name] = [];
-  L.marker(b.coords).addTo(map).bindPopup(`<b>${b.name}</b><br>${b.info}`)
-    .on('click', () => {
-      if (!start) {
-        start = b.name;
-        alert('📍 Start: ' + b.name);
-      } else if (!end) {
-        end = b.name;
-        if (start === end) {
-          alert('Pick different destination!');
-          start = end = null;
-          return;
-        }
-        computeRoute(start, end);
+
+  L.marker(b.coords).addTo(map).bindPopup(() => {
+    switch (b.name) {
+      case "Br. Ceci Hojilla FSC or CLF":
+        return `
+          <div style="max-width: 250px;">
+            <h3>${b.name}</h3>
+            <p><em>Lasallian formation & spiritual development hub</em></p>
+            <ul>
+              <li>Retreats, recollections, values formation</li>
+              <li>Includes OLStar Chapel, session rooms, dorms</li>
+              <li>Wellness office and Campus Ministry</li>
+            </ul>
+          </div>`;
+      case "Our Lady of the Star Chapel":
+        return `
+          <div style="max-width: 250px;">
+            <h3>${b.name}</h3>
+            <p><em>Main worship area of DLSZ</em></p>
+            <ul>
+              <li>Daily Masses, retreats, ministry events</li>
+            </ul>
+          </div>`;
+      case "Sports Pavilion":
+        return `
+          <div style="max-width: 250px;">
+            <h3>${b.name}</h3>
+            <p><em>Modern multi-sport & event facility</em></p>
+            <ul>
+              <li>Basketball, futsal, judo, dance, chess</li>
+              <li>Elevated running track & bleachers</li>
+            </ul>
+          </div>`;
+      case "DLSZ Football Field":
+        return `
+          <div style="max-width: 250px;">
+            <h3>Julius K. Quiambao Football Field</h3>
+            <p><em>FIFA-certified synthetic turf</em></p>
+            <ul>
+              <li>Football, ultimate frisbee, intramurals</li>
+              <li>Hosts PRISAA and regional events</li>
+            </ul>
+          </div>`;
+      default:
+        return `
+          <div style="max-width: 220px;">
+            <h3>${b.name}</h3>
+            <p>${b.info}</p>
+          </div>`;
+    }
+  })
+  .on('click', () => {
+    const mode = document.getElementById('mode-select').value;
+
+    if (mode === 'info') {
+      L.popup()
+        .setLatLng(b.coords)
+        .setContent(L.marker(b.coords).getPopup().getContent())
+        .openOn(map);
+      return;
+    }
+
+    if (!start) {
+      start = b.name;
+      alert('📍 Start: ' + b.name);
+    } else if (!end) {
+      end = b.name;
+      if (start === end) {
+        alert('Pick different destination!');
         start = end = null;
+        return;
       }
-    });
+      computeRoute(start, end);
+      start = end = null;
+    }
+  });
 });
 
 function addEdge(a, b) {
@@ -174,6 +268,17 @@ function computeRoute(a, b) {
   }
   panel.style.display = 'block';
 }
+
+document.getElementById('mode-select').addEventListener('change', (e) => {
+  if (e.target.value === 'info') {
+    document.getElementById('directions-panel').style.display = 'none';
+    if (routeLayer) {
+      map.removeLayer(routeLayer);
+      routeLayer = null;
+    }
+    start = end = null;
+  }
+});
 
 L.Control.geocoder({
   defaultMarkGeocode: false,
