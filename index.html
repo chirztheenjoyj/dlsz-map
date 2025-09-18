@@ -1,7 +1,17 @@
 <html>
 <head>
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-823W7XK4TZ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-823W7XK4TZ');
+</script>
+
   <meta charset="utf-8" />
-  <title>DLSZ Interactive Map</title>
+  <title>De La Salle Santiago Zobel School Interactive Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
@@ -23,6 +33,23 @@
       top: 10px;
       right: 10px;
       left: auto;
+      display: flex;
+      gap: 6px;
+    }
+
+    #toggle-box button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      background: darkgreen;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    #toggle-box button:hover {
+      background:lightgreen;
     }
 
     /* === Modal Styles === */
@@ -40,11 +67,25 @@
       text-align: center;
       padding: 20px;
     }
+    /* keep original selector for general img styling */
     #infoModal img {
       max-width: 90%;
       max-height: 70%;
       border-radius: 12px;
     }
+    /* minimal CSS required for sliding animation (applies to the #modalImg element) */
+    #modalImg {
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      transform: translateX(0);
+      opacity: 1;
+      max-width: 90%;
+      max-height: 70%;
+      border-radius: 12px;
+    }
+    /* classes used by JS */
+    #modalImg.out-left { transform: translateX(-100%); opacity: 0; }
+    #modalImg.out-right { transform: translateX(100%); opacity: 0; }
+    /* The in-animation is handled in JS by setting transform from ±100% -> 0 with the transition enabled. */
     #infoModal h2 { margin: 15px 0 10px; }
     #infoModal p { max-width: 80%; margin: 0 auto; }
     #closeModal {
@@ -67,22 +108,17 @@
 
 <div id="map"></div>
 
-<!-- 📍 Direction panel -->
 <div id="directions-panel" class="directions" style="display:none; top: 60px; left: 10px;">
   <h4>Directions</h4>
   <ol id="steps"></ol>
 </div>
 
-<!-- 🧭 Dropdown toggle -->
 <div id="toggle-box" class="directions">
-  <label for="mode-select">Mode:</label>
-  <select id="mode-select">
-    <option value="directions" selected>Show Directions</option>
-    <option value="info">Show Information</option>
-  </select>
+  <button id="btn-directions">Directions</button>
+  <button id="btn-info">Information</button>
+  <button id="btn-people">Key People</button>
 </div>
 
-<!-- 🖼️ Modal for Information -->
 <div id="infoModal">
   <span id="closeModal">&times;</span>
   <img id="modalImg" src="" />
@@ -98,11 +134,23 @@
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
 <script>
-const map = L.map('map').setView([14.4093, 121.0195], 18);
+// Map: zoomable but not draggable, always re-centers
+const centerCoords = [14.4095, 121.0198];
+
+const map = L.map('map', {
+  dragging: false,           // disable dragging
+  zoomControl: true,         // keep zoom buttons
+  scrollWheelZoom: true,     // allow scroll zoom
+  doubleClickZoom: true,     // allow double-click zoom
+  boxZoom: true,             // allow box zoom
+  touchZoom: true            // allow pinch zoom
+}).setView(centerCoords, 18);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
+// User location marker
 const userIcon = L.divIcon({
   html: '🚶‍♂️',
   className: '',
@@ -116,218 +164,143 @@ map.on('locationfound', function (e) {
   userMarker.setLatLng(e.latlng);
 });
 
+// Always re-center on zoom (but keep zoom level)
+map.on("zoomend", () => {
+  map.setView(centerCoords, map.getZoom(), { animate: false });
+});
+
+
+/* === Buildings list (standardized names) === */
 const buildings = [
-  { name: "Sports Pavilion", coords: [14.4102708, 121.0194265], info: "Modern sports venue" },
-  { name: "DLSZ Football Field", coords: [14.4104647, 121.0201077], info: "FIFA-certified turf field" },
-  { name: "Mutien Marie Building", coords: [14.4097899, 121.0204980], info: "Admin and registrar" },
-  { name: "La Salle Building", coords: [14.4093200, 121.0201930], info: "Classrooms and offices" },
-  { name: "Cadlum Hall & St. Leo Flavius Hall", coords: [14.4096818, 121.0193090], info: "Lecture halls" },
-  { name: "Angelo King CPA", coords: [14.4096396, 121.0196036], info: "Performing arts center" },
-  { name: "Br. Ceci Hojilla FSC or CLF", coords: [14.4087662, 121.0209836], info: "Lasallian formation hub" },
-  { name: "Our Lady of the Star Chapel", coords: [14.4086150, 121.0206765], info: "Worship area" },
-  { name: "St. Joseph Building", coords: [14.410289252625368, 121.01894337355556], info: "STEM and IT facilities", img: "https://i.ibb.co/xS8W4t7m/IMG-20250812-145144.jpg" },
-  { name: "Gym 3", coords: [14.410508, 121.018902], info: "Multi-use gym" },
-  { name: "School Fountain", coords: [14.409468, 121.019594], info: "Central campus landmark" },
-  { name: "Debbie Decena Auditorium", coords: [14.409014, 121.020375], info: "Auditorium for events" }
+  { name: "Sports Pavilion", coords: [14.4102708, 121.0194265], info: "Modern sports venue used for school function and physical education activities." },
+  { name: "Julius K. Quiambao Football Field", coords: [14.4104647, 121.0201077], info: "A FIFA-certified turf field" },
+  { name: "St. Mutien Marie Administration Building", coords: [14.4097899, 121.0204980], info: "Administration and Registrar offices" },
+  { name: "St. La Salle Building", coords: [14.4093200, 121.0201930], info: "Classrooms and offices" },
+  { name: "Cadlum Hall & St. Leo Flavius Hall", coords: [14.4096818, 121.0193090], info: "Halls for cafeteria and stalls" },
+  { name: "Angelo King Center for Performing Arts", coords: [14.4096396, 121.0196036], info: "The CPA houses the Sylvia P. Lina Theater, one of the most advanced school theaters in the Philippines." },
+  { name: "Br. Ceci Hojilla FSC", coords: [14.4087662, 121.0209836], info: "Center for Lasallian Formation"},
+  { name: "Our Lady of the Star Chapel", coords: [14.4086150, 121.0206765], info: "The chapel serves as the main spiritual hub for the school community." },
+  { name: "St. Joseph Building", coords: [14.410289252625368, 121.01894337355556], info: "STEM and IT facilities, such as robotics and computer technology."},
+  { name: "Taekwondo Gym 3", coords: [14.410508, 121.018902], info: "A multi-use gym" },
+  { name: "School Fountain", coords: [14.409468, 121.019594], info: "The central campus landmark." },
+  { name: "Debbie Decena Auditorium", coords: [14.409014, 121.020375], info: "Auditorium for events and gatherings." }
 ];
 
-/* === Galleries: images + description === */
+/* === Galleries (fixed names + direct links) === */
 const buildingGalleries = {
   "School Fountain": [
-    {
-      src: "https://i.ibb.co/7hRwrFs/IMG-20250812-145646.jpg",
-      desc: "The iconic fountain at the heart of campus, often used as a landmark and meeting place."
-    },
-    {
-      src: "https://i.ibb.co/4RvKCLMX/IMG-20250812-145633.jpg",
-      desc: "Another view of the school fountain, showing the surrounding greenery and open space."
-    }
+    { src: "https://i.ibb.co/7hRwrFs/IMG-20250812-145646.jpg", desc: "The iconic fountain at the heart of campus, often used as a landmark and meeting place." },
+    { src: "https://i.ibb.co/4RvKCLMX/IMG-20250812-145633.jpg", desc: "Another view of the school fountain, showing the surrounding greenery and open space." }
   ],
   "Sports Pavilion": [
-    {
-      src: "https://ibb.co/CpRkYbC4",
-      desc: "Modern sports venue equipped for basketball, futsal, judo, and more."
-    },
-    {
-      src: "https://ibb.co/3gM1N73",
-      desc: "place holder."
-},
-{
-      src: "https://ibb.co/YBN1Q14P",
-      desc: "placeholder."
-    },
-    {
-      src: "https://ibb.co/5WPP4jCD",
-      desc: "place holder."
-}
-],
-  "Angelo King CPA": [
-    {
-      src: "https://i.ibb.co/TDzP6dVs/IMG-20250812-145543.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/KcCVdSMJ/IMG-20250812-145543.jpg",
-      desc: "Placeholder."
-    }
+    { src: "https://i.ibb.co/CpRkYbC4/IMG-20250812-145500.jpg", desc: "Modern sports venue equipped for basketball, futsal, judo, and more." },
+    { src: "https://i.ibb.co/3gM1N73/IMG-20250812-145501.jpg", desc: "Reopened as the modern Sports Pavilion with a bold new dome addition." },
+    { src: "https://i.ibb.co/YBN1Q14P/IMG-20250812-145502.jpg", desc: "Used extensively for PE classes, varsity training, and facilities for various sports." },
+    { src: "https://i.ibb.co/5WPP4jCD/IMG-20250812-145503.jpg", desc: "The Pavilion fosters sportsmanship and excellence among students." }
+  ],
+  "Angelo King Center for Performing Arts": [
+    { src: "https://i.ibb.co/TDzP6dVs/IMG-20250812-145543.jpg", desc: "Constructed between 1996 and 2000 through the support of Mr. Angelo King." },
+    { src: "https://i.ibb.co/KcCVdSMJ/IMG-20250812-145544.jpg", desc: "Recognized as CCP's Southern Satellite Venue in 2004, nicknamed 'CCP of the South'." }
   ],
   "Cadlum Hall & St. Leo Flavius Hall": [
-  {
-    src: "https://i.ibb.co/7JKWkRGK/IMG-20250812-145529.jpg",
-    desc: "Placeholder."
-  },
-  {
-    src: "https://i.ibb.co/Kxp9Y2s5/IMG-20250812-145411.jpg",
-    desc: "place holder."
-  },
-  {
-    src: "https://i.ibb.co/s0LrrzR/IMG-20250812-145343.jpg",
-    desc: "placeholder."
-  },
-  {
-    src: "https://i.ibb.co/84M77XH5/IMG-20250812-145302.jpg",
-    desc: "place holder."
-  },
-  {
-    src: "https://i.ibb.co/Z60FfPXt/IMG-20250812-145352.jpg",
-    desc: "placeholder."
-  }
-],
-"DLSZ Football Field": [
-  {
-    src: "https://i.ibb.co/bj2smjwQ/IMG-20250812-144752.jpg",
-    desc: "Placeholder."
-  },
-  {
-    src: "https://i.ibb.co/8g42CmZ9/IMG-20250812-144741.jpg",
-    desc: "place holder."
-  },
-  {
-    src: "https://i.ibb.co/67xPD9LN/IMG-20250812-144616.jpg",
-    desc: "placeholder."
-  },
-  {
-    src: "https://i.ibb.co/fdVvqTJ7/IMG-20250812-144553.jpg",
-    desc: "Placeholder."
-  }
-],
+    { src: "https://i.ibb.co/7JKWkRGK/IMG-20250812-145529.jpg", desc: "Named to honor Saint Joseph, reflecting community, service, and faith." },
+    { src: "https://i.ibb.co/Kxp9Y2s5/IMG-20250812-145411.jpg", desc: "Named after St. Leo the Great (Leo Flavius), a Doctor of the Church." }
+  ],
+  "Julius K. Quiambao Football Field": [
+    { src: "https://i.ibb.co/bj2smjwQ/IMG-20250812-144752.jpg", desc: "Renamed in honor of Julius Caesar Kindangen Quiambao." },
+    { src: "https://i.ibb.co/8g42CmZ9/IMG-20250812-144741.jpg", desc: "First FIFA Quality Certified pitch at a privately-run K–12 school in the Philippines." },
+    { src: "https://i.ibb.co/67xPD9LN/IMG-20250812-144616.jpg", desc: "Main training and match venue for DLSZ football teams and intramurals." },
+    { src: "https://i.ibb.co/fdVvqTJ7/IMG-20250812-144553.jpg", desc: "Also hosts external tournaments and national squads." }
+  ],
   "St. Joseph Building": [
-    {
-      src: "https://i.ibb.co/bjd1yzCn/IMG-20250812-145219.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/DHzMmCxx/IMG-20250812-145151.jpg",
-      desc: "place holder."
-},
-{
-      src: "https://i.ibb.co/xS8W4t7m/IMG-20250812-145144.jhttpspg",
-      desc: "placeholder."
-}
-],
-  "Mutien Marie Building": [
-    {
-      src: "https://i.ibb.co/99wq1943/IMG-20250812-144302.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/JwhM0scK/IMG-20250812-144457.jpg",
-      desc: "place holder."
-}
-],
-  "La Salle Building": [
-    {
-      src: "https://i.ibb.co/99wq1943/IMG-20250812-144302.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/JwhM0scK/IMG-20250812-144457.jpg",
-      desc: "place holder."
-}
-],
-  "Br. Ceci Hojilla FSC or CLF": [
-    {
-      src: "https://i.ibb.co/4ZPJCbGp/IMG-20250812-143911.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/jvzr9cKS/IMG-20250812-143953.jpg",
-      desc: "place holder."
-}
-],
-  "La Salle Building": [
-    {
-      src: "https://i.ibb.co/KpD4RNfq/IMG-20250812-143857.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/BVtn2J9d/IMG-20250812-144219.jpg",
-      desc: "place holder."
-}
-],
+    { src: "https://i.ibb.co/bjd1yzCn/IMG-20250812-145219.jpg", desc: "Named to honor Saint Joseph, reflecting Lasallian philosophy." },
+    { src: "https://i.ibb.co/DHzMmCxx/IMG-20250812-145151.jpg", desc: "Constructed in the late 1980s during DLSZ's early growth years." }
+  ],
+  "St. Mutien Marie Administration Building": [
+    { src: "https://i.ibb.co/99wq1943/IMG-20250812-144302.jpg", desc: "Honors St. Mutien Marie Wiaux, canonized in 1989." },
+    { src: "https://i.ibb.co/JwhM0scK/IMG-20250812-144457.jpg", desc: "Serves as the hub for administrative operations." }
+  ],
+  "St. La Salle Building": [
+    { src: "https://i.ibb.co/99wq1943/IMG-20250812-144302.jpg", desc: "Named after St. John Baptist de La Salle, Patron Saint of Teachers." },
+    { src: "https://i.ibb.co/JwhM0scK/IMG-20250812-144457.jpg", desc: "Constructed during DLSZ's formative years (late 1970s–early 1980s)." }
+  ],
+  "Br. Ceci Hojilla FSC": [
+    { src: "https://i.ibb.co/4ZPJCbGp/IMG-20250812-143911.jpg", desc: "Established to strengthen Lasallian formation and values." },
+    { src: "https://i.ibb.co/jvzr9cKS/IMG-20250812-143953.jpg", desc: "Dedicated to forming students in the Lasallian 5Cs values." }
+  ],
   "Debbie Decena Auditorium": [
-    {
-      src: "https://i.ibb.co/1J8TtmrG/IMG-20250812-143555.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/GLJ5HnF/IMG-20250812-143610.jpg",
-      desc: "place holder."
-    },
-    {
-      src: "https://i.ibb.co/cc5zXjmV/IMG-20250812-143627.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/zVqXNkKn/IMG-20250812-143658.jpg",
-      desc: "place holder."
-    },
-    {
-      src: "https://i.ibb.co/ymS1WsBF/IMG-20250812-143709.jpg",
-      desc: "Placeholder."
-    },
-    {
-      src: "https://i.ibb.co/Y7sRgM9b/IMG-20250812-143719.jpg",
-      desc: "place holder."
-    },
-    {
-      src: "https://i.ibb.co/rKnn5tp7/IMG-20250812-143730.jpg",
-      desc: "Placeholder."
-    },
-],
+    { src: "https://i.ibb.co/1J8TtmrG/IMG-20250812-143555.jpg", desc: "Dedicated in memory of Deborah 'Debbie' Decena, Grade 4 student." },
+    { src: "https://i.ibb.co/GLJ5HnF/IMG-20250812-143610.jpg", desc: "Built as a space for performing arts, assemblies, and gatherings." },
+    { src: "https://i.ibb.co/cc5zXjmV/IMG-20250812-143627.jpg", desc: "Main auditorium of the DLSZ Alabang campus." }
+  ],
+  "Our Lady of the Star Chapel": [
+    { src: "https://i.ibb.co/J1BTFp0/OLS-Chapel.jpg", desc: "Located in the Br. Ceci Hojilla FSC Center, purpose-built for worship and reflection." }
+  ]
 };
 
+/* === Brother Rafael Donato FSC Gallery === */
+const keyPeopleGallery = [
+  { name: "Brother Rafael Donato FSC", src: "https://upload.wikimedia.org/wikipedia/commons/6/65/Christian_Brothers.png", desc: "Br. Rafael Donato, FSC, was a prominent figure in education, shaping several La Salle institutions throughout his career. The De La Salle Santiago Zobel - Br. Rafael Donato Night High School was formerly Adult Night High School (ANHS) that opened in SY 1997-1998 under the leadership of the former School Director, Mrs. Judith Aldaba, PhD. First envisioned as a program for the underprivileged youth and adults who aspire to finish high school, the school proved to be instrumental in clarifying further directions in their lives." }
+];
+
+/* === Node map + adjacency list === */
 const nodeMap = {}, adjacencyList = {};
 let start = null, end = null, routeLayer = null;
+let mode = "directions";
 
-/* === Marker setup === */
 buildings.forEach(b => {
   nodeMap[b.name] = b.coords;
   adjacencyList[b.name] = [];
 
-  const marker = L.marker(b.coords).addTo(map);
+ const marker = L.marker(b.coords).addTo(map);
+
+marker.bindPopup(`<b>${b.name}</b><br>${b.info || ""}`);
+
+let locked = false; // track if popup is locked open
+
+// Hover behavior
+marker.on("mouseover", () => {
+  if (!locked) marker.openPopup();
+});
+marker.on("mouseout", () => {
+  if (!locked) marker.closePopup();
+});
+
+// Click behavior (lock popup open)
+marker.on("click", () => {
+  locked = true;
+  marker.openPopup();
+
+  // Close it if user clicks the popup's close button
+  marker.getPopup().on("remove", () => {
+    locked = false;
+  });
+});
+
+// Floating animation
+marker.on("add", () => {
+  const el = marker.getElement();
+  if (el) {
+    el.style.transition = "transform 0.3s ease";
+    el.addEventListener("mouseover", () => {
+      el.style.transform = "translateY(-8px) scale(1.1)";
+    });
+    el.addEventListener("mouseout", () => {
+      el.style.transform = "translateY(0) scale(1)";
+    });
+  }
+});
+
 
   marker.on('click', () => {
-    const mode = document.getElementById('mode-select').value;
-
-    if (mode === 'info') {
-      // 🔹 Open big modal gallery
-      openInfoModal(b.name, b.info);
-    } else {
-      // 🔹 Small popup for directions mode
+    if (mode === 'info') openInfoModal(b.name, b.info);
+    else if (mode === 'people') openPeopleModal();
+    else {
       marker.bindPopup(`<b>${b.name}</b><br>${b.info || ""}`).openPopup();
-
-      // Directions start/end
-      if (!start) {
-        start = b.name;
-        alert('📍 Start: ' + b.name);
-      } else if (!end) {
+      if (!start) { start = b.name; alert('📍 Start: ' + b.name); }
+      else if (!end) {
         end = b.name;
-        if (start === end) {
-          alert('Pick different destination!');
-          start = end = null;
-          return;
-        }
+        if (start === end) { alert('Pick different destination!'); start = end = null; return; }
         computeRoute(start, end);
         start = end = null;
       }
@@ -335,62 +308,152 @@ buildings.forEach(b => {
   });
 });
 
-/* === Modal logic === */
-let currentGallery = [], galleryIndex = 0;
-
+/* === Modal logic (fixed title issue) === */
+let currentGallery = [], galleryIndex = 0, activeBuildingName = "";
 function openInfoModal(name, info) {
   const gallery = buildingGalleries[name] || [];
   currentGallery = gallery;
   galleryIndex = 0;
-
+  activeBuildingName = name;
   document.getElementById('modalTitle').textContent = name;
   document.getElementById('modalInfo').textContent = (gallery[0]?.desc) || info || "";
   document.getElementById('modalImg').src = (gallery[0]?.src) || "";
-
   document.getElementById('infoModal').style.display = "flex";
 }
-
+function openPeopleModal() {
+  currentGallery = keyPeopleGallery;
+  galleryIndex = 0;
+  activeBuildingName = keyPeopleGallery[0].name;
+  document.getElementById('modalTitle').textContent = keyPeopleGallery[0].name;
+  document.getElementById('modalInfo').textContent = keyPeopleGallery[0].desc;
+  document.getElementById('modalImg').src = keyPeopleGallery[0].src;
+  document.getElementById('infoModal').style.display = "flex";
+}
 document.getElementById('closeModal').onclick = () => {
   document.getElementById('infoModal').style.display = "none";
 };
+  
 
+/* === Slide-enabled Prev/Next (robust: preloads the next image, slides out then slides in) === */
+function showImage(direction) {
+  const modalImg = document.getElementById('modalImg');
+  const modalInfo = document.getElementById('modalInfo');
+
+  // determine classes / directions
+  const outClass = direction === "next" ? "out-left" : "out-right";
+  const inFrom = direction === "next" ? "100%" : "-100%";
+
+  // animate current image out
+  modalImg.classList.add(outClass);
+
+  // after out animation completes, preload the next image then animate it in
+  setTimeout(() => {
+    const next = currentGallery[galleryIndex];
+    if (!next) return;
+
+    const nextSrc = next.src;
+    const nextDesc = next.desc || "";
+
+    // preload to avoid flash
+    const pre = new Image();
+    pre.onload = () => {
+      // remove out class (old image is out)
+      modalImg.classList.remove(outClass);
+
+      // prepare incoming image: jump it to start position (no transition)
+      modalImg.style.transition = 'none';
+      modalImg.style.transform = `translateX(${inFrom})`;
+      modalImg.style.opacity = '0';
+
+      // swap src (image already preloaded)
+      modalImg.src = nextSrc;
+      modalInfo.textContent = nextDesc;
+      document.getElementById('modalTitle').textContent = activeBuildingName;
+
+      // force reflow so the browser registers the starting transform
+      void modalImg.offsetWidth;
+
+      // enable transition and move to center
+      modalImg.style.transition = 'transform 0.4s ease, opacity 0.4s ease';
+      modalImg.style.transform = 'translateX(0)';
+      modalImg.style.opacity = '1';
+
+      // cleanup inline styles after animation
+      setTimeout(() => {
+        modalImg.style.transition = '';
+        modalImg.style.transform = '';
+        modalImg.style.opacity = '';
+      }, 420);
+    };
+    pre.onerror = () => {
+      // If preload fails, still set src to next (browser will try); remove outClass so modal isn't stuck
+      modalImg.classList.remove(outClass);
+      modalImg.src = nextSrc;
+      modalInfo.textContent = nextDesc;
+      document.getElementById('modalTitle').textContent = activeBuildingName;
+    };
+    pre.src = nextSrc;
+  }, 400); // matches CSS transition duration
+}
+
+// wire prev/next buttons to update galleryIndex then call showImage
 document.getElementById('prevImg').onclick = () => {
   if (currentGallery.length) {
     galleryIndex = (galleryIndex - 1 + currentGallery.length) % currentGallery.length;
-    document.getElementById('modalImg').src = currentGallery[galleryIndex].src;
-    document.getElementById('modalInfo').textContent = currentGallery[galleryIndex].desc;
+    showImage("prev");
   }
 };
-
 document.getElementById('nextImg').onclick = () => {
   if (currentGallery.length) {
     galleryIndex = (galleryIndex + 1) % currentGallery.length;
-    document.getElementById('modalImg').src = currentGallery[galleryIndex].src;
-    document.getElementById('modalInfo').textContent = currentGallery[galleryIndex].desc;
+    showImage("next");
   }
 };
 
+/* === Prev/Next Button Float Effect (JS version) === */
+const prevBtn = document.getElementById('prevImg');
+const nextBtn = document.getElementById('nextImg');
+
+[prevBtn, nextBtn].forEach(btn => {
+  btn.style.transition = "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease";
+
+  btn.addEventListener("mouseover", () => {
+    btn.style.background = "green";
+    btn.style.transform = "translateY(-4px)";
+    btn.style.boxShadow = "0 6px 12px rgba(0,0,0,0.3)";
+  });
+
+  btn.addEventListener("mouseout", () => {
+    btn.style.background = "white";
+    btn.style.transform = "translateY(0)";
+    btn.style.boxShadow = "none";
+  });
+});
+
+
+
 /* === Graph + Routing === */
 function addEdge(a, b) {
+  if (!nodeMap[a] || !nodeMap[b]) { console.warn("⚠ Missing node:", a, b); return; }
   const [la, lo] = nodeMap[a], [lb, lo2] = nodeMap[b];
   const dist = Math.hypot(la - lb, lo - lo2);
   adjacencyList[a].push({ node: b, dist });
   adjacencyList[b].push({ node: a, dist });
 }
-
-addEdge("Sports Pavilion", "Gym 3");
-addEdge("Gym 3", "St. Joseph Building");
-addEdge("Sports Pavilion", "Angelo King CPA");
-addEdge("Angelo King CPA", "Cadlum Hall & St. Leo Flavius Hall");
+addEdge("Sports Pavilion", "Taekwondo Gym 3");
+addEdge("Taekwondo Gym 3", "St. Joseph Building");
+addEdge("Sports Pavilion", "Angelo King Center for Performing Arts");
+addEdge("Angelo King Center for Performing Arts", "Cadlum Hall & St. Leo Flavius Hall");
 addEdge("Cadlum Hall & St. Leo Flavius Hall", "School Fountain");
-addEdge("School Fountain", "La Salle Building");
-addEdge("La Salle Building", "Mutien Marie Building");
-addEdge("Mutien Marie Building", "Br. Ceci Hojilla FSC or CLF");
-addEdge("Br. Ceci Hojilla FSC or CLF", "Our Lady of the Star Chapel");
-addEdge("La Salle Building", "DLSZ Football Field");
-addEdge("Debbie Decena Auditorium", "Mutien Marie Building");
-addEdge("Debbie Decena Auditorium", "La Salle Building");
+addEdge("School Fountain", "St. La Salle Building");
+addEdge("St. La Salle Building", "St. Mutien Marie Administration Building");
+addEdge("St. Mutien Marie Administration Building", "Br. Ceci Hojilla FSC");
+addEdge("Br. Ceci Hojilla FSC", "Our Lady of the Star Chapel");
+addEdge("St. La Salle Building", "Julius K. Quiambao Football Field");
+addEdge("Debbie Decena Auditorium", "St. Mutien Marie Administration Building");
+addEdge("Debbie Decena Auditorium", "St. La Salle Building");
 
+/* === Dijkstra + Directions === */
 function dijkstra(s, e) {
   const dist = {}, prev = {};
   Object.keys(adjacencyList).forEach(n => { dist[n] = 1e9; prev[n] = null; });
@@ -412,7 +475,6 @@ function dijkstra(s, e) {
   while (u) { path.unshift(u); u = prev[u]; }
   return path;
 }
-
 function getDirection(prev, current, next) {
   const angle = (p1, p2) => Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
   const deg = x => x * (180 / Math.PI);
@@ -425,14 +487,12 @@ function getDirection(prev, current, next) {
   if (normalized >= 210 && normalized <= 330) return "Turn left";
   return "Continue";
 }
-
 function computeRoute(a, b) {
   const p = dijkstra(a, b);
   if (routeLayer) map.removeLayer(routeLayer);
   const coords = p.map(n => nodeMap[n]);
   routeLayer = L.polyline(coords, { color: '#90ee90', weight: 5, dashArray: '5,5' }).addTo(map);
   map.fitBounds(routeLayer.getBounds());
-
   const panel = document.getElementById('directions-panel');
   const ol = document.getElementById('steps');
   ol.innerHTML = '';
@@ -447,12 +507,26 @@ function computeRoute(a, b) {
   panel.style.display = 'block';
 }
 
-document.getElementById('mode-select').addEventListener('change', (e) => {
-  if (e.target.value === 'info') {
-    document.getElementById('directions-panel').style.display = 'none';
-    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
-    start = end = null;
-  }
+/* === Mode Switch Buttons === */
+document.getElementById('btn-directions').addEventListener('click', () => {
+  mode = "directions"; document.getElementById('directions-panel').style.display = 'none';
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  start = end = null; alert("Directions mode activated 🧭");
+});
+document.getElementById('btn-info').addEventListener('click', () => {
+  mode = "info"; document.getElementById('directions-panel').style.display = 'none';
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  start = end = null; alert("Information mode activated ℹ️");
+});
+document.getElementById('btn-people').addEventListener('click', () => {
+  mode = "people"; 
+  document.getElementById('directions-panel').style.display = 'none';
+  if (routeLayer) { 
+    map.removeLayer(routeLayer); 
+    routeLayer = null; 
+  }start = end = null; 
+  alert("Key People mode activated 👥"); // 🔔 show alert
+  openPeopleModal();                     // 📌 open modal
 });
 </script>
 </body>
