@@ -1,3 +1,4 @@
+
 <html>
 <head>
 
@@ -88,11 +89,21 @@
     /* The in-animation is handled in JS by setting transform from ±100% -> 0 with the transition enabled. */
     #infoModal h2 { margin: 15px 0 10px; }
     #infoModal p { max-width: 80%; margin: 0 auto; }
-    #closeModal {
-      position: absolute;
-      top: 20px; right: 30px;
-      font-size: 32px;
-      cursor: pointer;
+#closeModal {
+  position: absolute;
+  top: 20px; 
+  right: 60px;
+  font-size: 32px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.2); /* faint circle background */
+  color: white;                      /* make it visible */
+  padding: 4px 12px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+#closeModal:hover {
+  background: rgba(255,255,255,0.4); /* hover highlight */
+}
     }
     .gallery-controls {
       margin-top: 12px;
@@ -116,7 +127,7 @@
 <div id="toggle-box" class="directions">
   <button id="btn-directions">Directions</button>
   <button id="btn-info">Information</button>
-  <button id="btn-people">Key People</button>
+  <button id="btn-people">Br. Rafe</button>
 </div>
 
 <div id="infoModal">
