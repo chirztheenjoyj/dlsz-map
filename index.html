@@ -1,4 +1,4 @@
--<!doctype html>
+<!doctype html>
 <html>
 <head>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-823W7XK4TZ"></script>
@@ -10,148 +10,171 @@
   gtag('config', 'G-823W7XK4TZ');
 </script>
   <meta charset="utf-8" />
-  <title>De La Salle Santiago Zobel School Interactive Map — Final Revisions</title>
+  <title>DLSZ Interactive Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
-    html,body { height:100%; margin:0; font-family: Arial, sans-serif; }
-    #map { height: 100vh; }
-
-    /* FABs */
-    .fab { position: fixed; background: white; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(0,0,0,0.18); cursor:pointer; z-index:1400; overflow:hidden; }
-    /* gallery FAB - rounded square and much larger */
-    #galleryFab { width:150px; height:125px; border-radius:14px; bottom:18px; right:18px; border:1px solid black; }
-    #galleryFab img { position:absolute; width:100%; height:100%; object-fit:cover; left:0; top:0; opacity:0; transition:opacity 0.9s ease; }
-    #galleryFab img.active { opacity:1; }
-    #galleryFab .caption { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.65); color:#222; padding:2px 8px; border-radius:8px; font-size:12px; text-align:center }
-
-    /* directions & people FABs (icons) */
-    #directionsFab, #keyFab { width:64px; height:64px; border-radius:50%; right:18px; }
-    #directionsFab { top:18px; }
-    #keyFab { top:92px; }
-
-    /* Directions panel (unchanged semantics) */
-    .directions { position:absolute; background: rgba(255,255,255,0.95); padding:12px; border-radius:8px; color:#1b3b1b; z-index:1200; max-width:260px; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
-
-    /* Gallery panel */
-    #galleryPanel { position:fixed; left:0; right:0; bottom:-300px; height:260px; background:rgba(255,255,255,0.98); border-top:3px solid #2e7d32; z-index:1500; padding:22px 36px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; transition:bottom 0.45s cubic-bezier(.2,.9,.3,1), opacity 0.32s ease; opacity:0; pointer-events:none; }
-    #galleryPanel.active { bottom:0; opacity:1; pointer-events:auto; }
-    #galleryPanel { position:fixed; }
-    .gallery-title { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:#fff; color:#2e7d32; padding:6px 10px; border-radius:10px; font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.08); z-index:1510; }
-
-    .carousel-viewport { width:100%; max-width:1100px; overflow:visible; }
-    .carousel-track { display:flex; gap:18px; align-items:center; justify-content:center; will-change:transform; }
-
-    .carousel-card { width:260px; height:170px; flex:0 0 260px; border-radius:10px; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.12); position:relative; transition: transform 0.45s cubic-bezier(.2,.9,.3,1), opacity 0.36s ease; cursor:pointer; }
-    .carousel-card img { width:100%; height:100%; object-fit:cover; display:block; }
-    .carousel-card .label { position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,0.55); color:white; padding:6px 10px; border-radius:6px; font-size:13px; }
-
-    /* DEFAULT visual state:
-       - center is larger & fully opaque
-       - side cards are smaller & less opaque
-    */
-    .carousel-card.side {
-      transform: scale(0.92);
-      opacity: 0.45;
+    :root{
+      --panel-w:320px;
+      --gallery-h-desktop:180px;
+      --gallery-h-mobile:140px;
+      --base-gap:16px;
+      --fab-size:56px;
     }
+    html,body{ height:100%; margin:0; font-family:Inter,system-ui,Arial,sans-serif; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    #map{ height:100vh; width:100%; }
 
-    .carousel-card.center {
-      transform: scale(1.04);
+    /* Gallery FAB (bottom-left preview) */
+    #galleryFab{
+      position:fixed; left:16px; bottom:16px; width:140px; height:84px; border-radius:12px; overflow:hidden;
+      z-index:1400; box-shadow:0 10px 30px rgba(0,0,0,0.14); background:#fff; cursor:pointer; border:1px solid rgba(0,0,0,0.06);
+      transition: bottom 260ms cubic-bezier(.2,.9,.3,1), transform 200ms ease, opacity 240ms ease;
+    }
+    #galleryFab img{ position:absolute; width:100%; height:100%; object-fit:cover; left:0; top:0; opacity:0; transition:opacity .8s ease; }
+    #galleryFab img.active{ opacity:1; }
+    #galleryFab .caption{ position:absolute; bottom:6px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.9); color:#222; padding:4px 8px; border-radius:10px; font-size:12px; z-index:1410; }
+
+    /* Key people FAB */
+    #keyFab{ position:fixed; left:16px; bottom:140px; width:52px; height:52px; border-radius:10px; background:#1b5e20; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:1420; box-shadow:0 6px 18px rgba(0,0,0,0.12); transition: bottom 260ms cubic-bezier(.2,.9,.3,1); }
+
+    /* Directions FAB */
+    #guideFab{ position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:12px; background:#43a047; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:1420; box-shadow:0 6px 18px rgba(0,0,0,0.12); transition: bottom 260ms cubic-bezier(.2,.9,.3,1), right 260ms ease, top 260ms ease; }
+
+    /* Leaflet zoom: default position */
+    .leaflet-control-zoom { position: fixed !important; right:16px; bottom:86px; z-index:1420; transition: bottom 260ms cubic-bezier(.2,.9,.3,1), top 260ms ease, right 260ms ease; }
+
+    /* Guide panel (directions) */
+    #guide-panel{
+      position:fixed; right:16px; bottom:16px; width:var(--panel-w); max-height:46vh;
+      background:linear-gradient(180deg,#fff 0%, #fbfbfb 100%); padding:12px; box-shadow:-8px 0 28px rgba(0,0,0,0.12); border-radius:10px;
+      z-index:1450; transform: translateY(120%); transition: transform 360ms cubic-bezier(.2,.9,.3,1), bottom 300ms ease, opacity 260ms ease;
+      overflow:auto;
+    }
+    #guide-panel.active{ transform: translateY(0); opacity:1; }
+
+    #guide-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    #guide-header h4{ margin:0; font-size:14px; color:#123; }
+    #panelClose{ background:#efefef; color:#333; border-radius:8px; padding:6px 8px; border:none; cursor:pointer; font-weight:600; }
+
+    #steps{ padding-left:14px; margin:8px 0 0 0; font-size:13px; overflow:auto; max-height:240px; color:#1b3b1b; }
+
+    .panel-actions{ display:flex; gap:8px; margin-top:8px; }
+    .panel-btn{ padding:8px 10px; font-size:13px; border-radius:8px; border:none; cursor:pointer; flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+    #resetDirections{ background:#ef5350; color:white; }
+    #toggleAudio{ background:#1976d2; color:white; }
+    #guideToggleBtn{ background:#43a047; color:white; }
+    #clearTarget{ background:#9e9e9e; color:white; }
+
+    .target-info{ font-size:13px; color:#444; margin-top:6px; }
+
+    /* Gallery panel (shrunk + slide/fade) */
+    #galleryPanel{
+      position:fixed; left:0; right:0; bottom:-200%; height:var(--gallery-h-desktop); background:rgba(255,255,255,0.98); border-top:3px solid #2e7d32;
+      z-index:1500; padding:14px 20px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; transition: bottom 360ms cubic-bezier(.2,.9,.3,1), opacity 320ms ease;
+      overflow:visible; opacity:0;
+    }
+    #galleryPanel.active{ bottom:0; opacity:1; }
+
+    .gallery-title{ position:absolute; top:8px; left:50%; transform:translateX(-50%); background:#fff; color:#2e7d32; padding:6px 10px; border-radius:10px; font-size:13px; z-index:1510; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+
+    .carousel-viewport{ width:100%; max-width:1100px; overflow:visible; }
+    .carousel-track{ display:flex; gap:14px; align-items:center; justify-content:center; will-change:transform; }
+    .carousel-card{ width:240px; height:150px; flex:0 0 240px; border-radius:10px; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.12); position:relative; transition: transform 0.45s cubic-bezier(.2,.9,.3,1), opacity 0.36s ease; cursor:pointer; background:#fff; }
+    .carousel-card img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .carousel-card .label{ position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,0.55); color:white; padding:6px 10px; border-radius:6px; font-size:13px; }
+    .carousel-card.side{ transform: scale(0.94); opacity:0.5; }
+    .carousel-card.center{ transform: scale(1.04); opacity:1; }
+    .carousel-card.anim-center-out{ transform: translateX(-24px) scale(1); opacity:0.5; }
+    .carousel-card.anim-side-zoom{ transform: scale(1.03); opacity:0.95; }
+
+    .carousel-nav{ position:absolute; top:50%; transform:translateY(-50%); width:56px; height:56px; border-radius:50%; border:none; background:rgba(255,255,255,0.95); color:#2e7d32; font-size:24px; cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,0.12); z-index:1600; }
+    #galleryPrev{ left:18px; }
+    #galleryNext{ right:18px; }
+
+    /* Modal */
+    #infoModal{ display:none; opacity:0; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.88); z-index:3000; align-items:center; justify-content:center; transition:opacity 0.28s ease; }
+    #infoModal.show{ display:flex; opacity:1; }
+    .modal-inner{ position:relative; width:92%; max-width:1000px; text-align:center; padding:18px; }
+    #modalWrapper{ position:relative; display:flex; align-items:center; justify-content:center; min-height:320px; }
+    #modalImg{ max-width:92%; max-height:68vh; border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,0.45); transition: transform 0.42s cubic-bezier(.2,.9,.3,1), opacity 0.36s ease; }
+    #modalTitle{ color:white; font-size:1.25rem; margin-bottom:10px; text-align:center; }
+    #modalInfo{ color:#ddd; margin-top:12px; max-width:90%; text-align:center; font-size:15px; }
+
+    .tts-controls{ margin-top:12px; display:flex; gap:12px; justify-content:center; align-items:center; color:#ddd; }
+    .tts-controls button{ background:#fff; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.06); font-size:14px; }
+    .tts-controls input[type="range"]{ width:140px; }
+
+    .side-btn{ position:fixed; top:50%; transform:translateY(-50%); width:64px; height:64px; border-radius:50%; background:rgba(173,255,176,0.12); color:white; border:none; font-size:28px; cursor:pointer; z-index:3500; }
+    .side-btn.left{ left:14px; }
+    .side-btn.right{ right:14px; }
+    #closeModal{ position:fixed; top:14px; right:14px; width:64px; height:64px; border-radius:50%; background:rgba(173,255,176,0.12); color:white; border:none; font-size:28px; z-index:3600; }
+
+    /* Popup slide + fade for marker popup wrapper */
+    .leaflet-popup-content-wrapper {
+      transform: translateY(8px);
+      opacity: 0;
+      transition: transform 220ms ease, opacity 220ms ease;
+    }
+    .leaflet-popup-content-wrapper.pop-float {
+      transform: translateY(0px);
       opacity: 1;
     }
 
-    /* ANIMATION classes used during navigation:
-       - anim-center-out: the center card moves left (or right when .rev present), shrinks & fades
-       - anim-side-zoom: the side cards zoom a bit and increase opacity but DO NOT translate horizontally
-    */
-    .carousel-card.anim-center-out {
-      /* slides left by default while shrinking & fading */
-      transform: translateX(-25px) scale(1.0);
-      opacity: 0.5;
-      transition: transform 0.42s cubic-bezier(.2,.9,.3,1), opacity 0.38s ease;
-    }
-    .carousel-card.anim-center-out.rev {
-      /* reverse: slide right */
-      transform: translateX(-25px) scale(1.0);
+    /* Responsive */
+    @media (max-width:920px){ :root{ --panel-w:280px; } .carousel-card{ width:210px; height:130px; } #galleryFab{ width:120px; height:76px; } }
+    @media (max-width:600px){
+      :root{ --panel-w:240px; }
+      #galleryPanel{ height:var(--gallery-h-mobile); }
+      #guide-panel{ width:var(--panel-w); max-height:50vh; }
+      #galleryFab{ left:12px; bottom:12px; width:110px; height:72px; }
+      #keyFab{ left:12px; bottom:100px; width:50px; height:50px; }
+      #guideFab{ right:12px; width:50px; height:50px; }
+      .carousel-card{ width:170px; height:110px; }
+      .tts-controls input[type="range"]{ width:110px; }
     }
 
-    .carousel-card.anim-side-zoom {
-      Transform: scale(1.05);
-      opacity: 0.95;
-      transition: transform 0.42s cubic-bezier(.2,.9,.3,1), opacity 0.38s ease;
-    }
-
-    /* Carousel nav - positioned relative to the panel and vertically centered */
-    .carousel-nav { position:absolute; top:50%; transform:translateY(-50%); width:64px; height:64px; border-radius:50%; border:none; background:rgba(255,255,255,0.95); color:#2e7d32; font-size:28px; cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,0.12); z-index:1600; }
-    #galleryPrev { left:18px; }
-    #galleryNext { right:18px; }
-
-    /* Modal lightbox */
-    #infoModal { display:none; opacity:0; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.88); z-index:3000; align-items:center; justify-content:center; transition:opacity 0.28s ease; }
-    #infoModal.show { display:flex; opacity:1; }
-    .modal-inner { position:relative; width:92%; max-width:1100px; text-align:center; }
-    #modalWrapper { position:relative; display:flex; align-items:center; justify-content:center; }
-    #modalImg { max-width:92%; max-height:82vh; border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,0.45); transition: transform 0.42s cubic-bezier(.2,.9,.3,1), opacity 0.36s ease; }
-    #modalTitle { color:white; font-size:1.5rem; margin-bottom:12px; text-align:center; }
-    #modalInfo { color:#ddd; margin-top:12px; max-width:90%; text-align:center; }
-
-    /* modal side buttons larger */
-    .side-btn { position:fixed; top:50%; transform:translateY(-50%); width:72px; height:72px; border-radius:50%; background:rgba(255,255,255,0.12); color:white; border:none; font-size:30px; cursor:pointer; z-index:3500; }
-    .side-btn.left { left:14px; }
-    .side-btn.right { right:14px; }
-    #closeModal { position:absolute; top:14px; right:18px; width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,0.12); color:white; border:none; font-size:20px; z-index:3600; }
-
-    /* popup hover slide/fade (on marker hover) */
-    .leaflet-popup-content-wrapper { transition: transform 0.28s ease, opacity 0.28s ease; }
-    .leaflet-popup-content-wrapper.pop-float { transform:translateY(-8px); opacity:1; }
-
-    /* Mini close button (appears only when gallery open) */
-    #galleryMiniClose {
-      position:fixed;
- width:64px; 
-height:64px;
-      border-radius:8px;
-      background:white;
-      right:18px;
-      bottom:170px;
-      border:none;
-      box-shadow:0 6px 18px rgba(0,0,0,0.12);
-      opacity:0;
-      pointer-events:none;
-      z-index:1620;
-      transition: opacity 0.32s ease, transform 0.32s ease;
-      transform: translateY(6px);
-      cursor:pointer;
-    }
-    #galleryMiniClose.show {
-      opacity:1;
-      pointer-events:auto;
-      transform: translateY(0);
-    }
-
-    @media (max-width:920px){ .carousel-card{ width:210px; height:140px; } }
-    @media (max-width:600px){ .carousel-card{ width:170px; height:110px; } .side-btn{ width:56px; height:56px; font-size:22px; } }
+    /* Toast */
+    #toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:22px; background:rgba(0,0,0,0.75); color:white; padding:8px 12px; border-radius:10px; display:none; z-index:4000; font-size:13px; }
+    #toast.show{ display:block; opacity:1; }
   </style>
 </head>
 <body>
-
   <div id="map"></div>
 
   <!-- FABs -->
-  <div id="galleryFab" class="fab" title="Gallery">
-    <img id="fabImg0" src="" alt="" />
-    <img id="fabImg1" src="" alt="" />
+  <div id="galleryFab" title="Gallery preview">
+    <img id="fabImg0" src="" alt="">
+    <img id="fabImg1" src="" alt="">
     <div class="caption">Key areas</div>
   </div>
   <button id="galleryMiniClose" title="Close gallery">▲</button>
-  <button id="directionsFab" class="fab" title="Directions">🧭</button>
-  <div id="keyFab" class="fab" title="Key People">👤</div>
+  <div id="keyFab" title="Key people">👤</div>
+  <div id="guideFab" title="Directions">🧭</div>
 
-  <!-- Directions panel -->
-  <div id="directions-panel" class="directions" style="top:60px; left:10px; display:block;">
-    <h4 style="margin:0 0 8px 0;">Directions</h4>
-    <ol id="steps" style="padding-left:18px; margin:0; font-size:14px;"></ol>
+  <!-- Guide Panel -->
+  <div id="guide-panel" aria-hidden="true">
+    <div id="guide-header">
+      <h4>DIRECTIONS</h4>
+      <button id="panelClose" title="Close">✕</button>
+    </div>
+
+    <div id="targetStatus" class="target-info" style="display:none;">Target: <span id="targetName"></span></div>
+    <ol id="steps" style="margin:8px 0 0 0; padding-left:14px;"></ol>
+
+    <div class="panel-actions" style="margin-top:10px;">
+      <button id="resetDirections" class="panel-btn">🔄 Reset</button>
+      <button id="toggleAudio" class="panel-btn">🔇 Audio: Off</button>
+    </div>
+    <div style="height:8px"></div>
+    <div class="panel-actions">
+      <button id="guideToggleBtn" class="panel-btn">▶ Start Proximity Guide</button>
+      <button id="clearTarget" class="panel-btn">🧭 Clear Target</button>
+    </div>
+
+    <div style="font-size:12px; color:#666; margin-top:10px;">
+      Tip: click markers to pick start/end for directions. Double-click a marker to set it as the proximity <strong>target</strong>.
+    </div>
   </div>
 
   <!-- Gallery Panel -->
@@ -168,30 +191,42 @@ height:64px;
   <div id="infoModal" aria-hidden="true">
     <div class="modal-inner">
       <div id="modalTitle"></div>
-      <div id="modalWrapper"><img id="modalImg" src="" alt="" /></div>
+      <div id="modalWrapper"><img id="modalImg" src="" alt=""></div>
       <div id="modalInfo"></div>
-      <button id="closeModal">✕</button>
+
+      <div class="tts-controls" id="ttsControls">
+        <button id="ttsToggle" title="Play / Pause"><i class="fa-solid fa-play"></i></button>
+        <div class="tts-rate">
+          <label for="ttsRate" style="color:#ddd; font-size:14px;">Speed</label>
+          <input id="ttsRate" type="range" min="0.6" max="1.8" step="0.1" value="1">
+        </div>
+      </div>
     </div>
+
     <button id="modalPrev" class="side-btn left">◀</button>
     <button id="modalNext" class="side-btn right">▶</button>
+    <button id="closeModal" class="side-btn close">✕</button>
   </div>
 
-  <div id="toast" style="display:none"></div>
+  <div id="toast"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <script>
-    // ===== map setup =====
+    // ===== Map setup =====
     const centerCoords = [14.4095, 121.0198];
-    const map = L.map('map', { dragging:false, zoomControl:true, scrollWheelZoom:true }).setView(centerCoords, 18);
+    const map = L.map('map', { dragging:true, zoomControl:false, scrollWheelZoom:true }).setView(centerCoords, 18);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    const zoomControl = L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // user marker
     const userIcon = L.divIcon({ html:'🚶‍♂️', className:'', iconSize:[24,24], iconAnchor:[12,12] });
     const userMarker = L.marker([0,0], { icon:userIcon }).addTo(map);
-    map.locate({ setView:false, maxZoom:19, watch: true });
-    map.on('locationfound', e => userMarker.setLatLng(e.latlng));
+map.on('locationfound', e => {
+  userMarker.setLatLng(e.latlng);
+  checkProximity({ coords: { latitude: e.latitude, longitude: e.longitude } });
+});
 
-    // ===== data =====
+     // ===== data =====
     const buildings = [
       { name: "Sports Pavilion", coords:[14.4102708, 121.0194265], info: "Modern sports venue used for school function and physical education activities." },
       { name: "Julius K. Quiambao Football Field", coords:[14.4104647, 121.0201077], info: "A FIFA-certified turf field" },
@@ -342,13 +377,14 @@ desc: "Year 1976, it is the first building that was established to accommodate b
   "Our Lady of the Star Chapel": [
     {
       src: "https://i.ibb.co/J1BTFp0/OLS-Chapel.jpg",
-      desc: "The OLStar Chapel, located on the second floor of the Br. Ceci Hojilla FSC Center for Lasallian Formation (CLF), was purpose-built to provide students and staff with a faith, service, and communion within the school community"
+      desc: "The OLStar Chapel, located on the second floor of the Br. Ceci Hojilla FSC Center for Lasallian Formation (CLF), was purpose-built to provide students and staff with a faith, service, and communion within the school community."
     }
   ]
 };
-    const keyPeopleGallery = [ { name:"Brother Rafael Donato FSC", src:"https://i.ibb.co/v46N36LY/br-rafe-donato.jpg", desc:"On the year 1997, the school that's was established for underprivileged adults that is originally named as Adult Night High School. Later on, it expanded to include the younger generation which is now known as the Br. Rafael Donato FSC Night High School. In commemoration, each year, the school remembers Br. Rafe every 2nd of November." } ];
+    const keyPeopleGallery = [ { name:"Brother Rafael Donato FSC", src:"https://i.ibb.co/v46N36LY/br-rafe-donato.jpg", desc:"On the year 1997, the school that's was established for underprivileged adults that is originally named as Adult Night High School. Later on, it expanded to include the younger generation which is now known as the Br. Rafael Donato FSC Night High School. In commemoration, each year, the school remembers Br. Rafe every 2nd of November after his death and celebrate his birthday every 12th of October." } ];
 
-    // ===== routing graph & helpers (kept) =====
+
+    // ===== routing graph & helpers =====
     const nodeMap = {}, adjacencyList = {};
     buildings.forEach(b => { nodeMap[b.name] = b.coords; adjacencyList[b.name] = []; });
     function addEdge(a,b){ if(!nodeMap[a]||!nodeMap[b]) return; const [la,lo]=nodeMap[a], [lb,lo2]=nodeMap[b]; const dist=Math.hypot(la-lb, lo-lo2); adjacencyList[a].push({node:b,dist}); adjacencyList[b].push({node:a,dist}); }
@@ -365,32 +401,92 @@ desc: "Year 1976, it is the first building that was established to accommodate b
     addEdge("Debbie Decena Auditorium","St. Mutien Marie Administration Building");
     addEdge("Debbie Decena Auditorium","St. La Salle Building");
 
-    function dijkstra(s,e){ const dist={}, prev={}; Object.keys(adjacencyList).forEach(n=>{dist[n]=1e9; prev[n]=null;}); dist[s]=0; const Q=Object.keys(dist).slice(); while(Q.length){ Q.sort((a,b)=>dist[a]-dist[b]); const u=Q.shift(); if(u===e) break; adjacencyList[u].forEach(({node:vn, dist:d2})=>{ if(dist[u]+d2<dist[vn]){ dist[vn]=dist[u]+d2; prev[vn]=u; } }); } const path=[]; let u=e; while(u){ path.unshift(u); u=prev[u]; } return path; }
-    function getDirection(prevC, current, next){ const angle=(p1,p2)=>Math.atan2(p2[1]-p1[1], p2[0]-p1[0]); const deg=x=>x*(180/Math.PI); const a1=angle(prevC,current), a2=angle(current,next); let delta=deg(a2-a1); delta=((delta+360)%360); if(delta<30||delta>330) return "Go straight"; if(delta>=30&&delta<=150) return "Turn right"; if(delta>=210&&delta<=330) return "Turn left"; return "Continue"; }
-    function computeRoute(a,b){ const p=dijkstra(a,b); if(window.routeLayer) map.removeLayer(window.routeLayer); const coords=p.map(n=>nodeMap[n]); window.routeLayer = L.polyline(coords, { color:'#90ee90', weight:5, dashArray:'5,5' }).addTo(map); map.fitBounds(window.routeLayer.getBounds()); const ol=document.getElementById('steps'); ol.innerHTML=''; for(let i=0;i<p.length;i++){ if(i===0) ol.innerHTML += `<li>Start at ${p[i]}</li>`; else if(i===p.length-1) ol.innerHTML += `<li>Arrive at ${p[i]}</li>`; else { const dir = getDirection(nodeMap[p[i-1]], nodeMap[p[i]], nodeMap[p[i+1]]); ol.innerHTML += `<li>${dir} to ${p[i+1]}</li>`; } } document.getElementById('directions-panel').style.display = 'block'; }
+    function dijkstra(s,e){
+      const dist={}, prev={};
+      Object.keys(adjacencyList).forEach(n=>{dist[n]=1e9; prev[n]=null;});
+      dist[s]=0;
+      const Q=Object.keys(dist).slice();
+      while(Q.length){
+        Q.sort((a,b)=>dist[a]-dist[b]);
+        const u=Q.shift();
+        if(u===e) break;
+        adjacencyList[u].forEach(({node:vn, dist:d2})=>{
+          if(dist[u]+d2<dist[vn]){ dist[vn]=dist[u]+d2; prev[vn]=u; }
+        });
+      }
+      const path=[]; let u=e;
+      while(u){ path.unshift(u); u=prev[u]; }
+      return path;
+    }
 
-    // ===== markers: clicking markers will NOT open gallery; only select routing points. hover popup floats up with fade =====
+    function getDirection(prevC, current, next){
+      const angle=(p1,p2)=>Math.atan2(p2[1]-p1[1], p2[0]-p1[0]);
+      const deg=x=>x*(180/Math.PI);
+      const a1=angle(prevC,current), a2=angle(current,next);
+      let delta=deg(a2-a1); delta=((delta+360)%360);
+      if(delta<30||delta>330) return "Go straight";
+      if(delta>=30&&delta<=150) return "Turn right";
+      if(delta>=210&&delta<=330) return "Turn left";
+      return "Continue";
+    }
+
+    // route layer and computeRoute -> populates steps
+let routeLayer = null;
+let currentRoute = null;
+let currentStepIndex = 0;
+
+function computeRoute(a, b) {
+  const p = dijkstra(a, b);
+  if (!p || p.length === 0) return;
+  if (routeLayer) map.removeLayer(routeLayer);
+
+  const coords = p.map(n => nodeMap[n]);
+  currentRoute = coords;
+  currentStepIndex = 0;
+
+  routeLayer = L.polyline(coords, { color: '#90ee90', weight: 5, dashArray: '5,5' }).addTo(map);
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+
+  // fill steps in panel
+  const stepsEl = document.getElementById('steps');
+  stepsEl.innerHTML = '';
+  for (let i = 0; i < p.length; i++) {
+    if (i === 0) stepsEl.innerHTML += `<li>Start at ${p[i]}</li>`;
+    else if (i === p.length - 1) stepsEl.innerHTML += `<li>Arrive at ${p[i]}</li>`;
+    else {
+      const dir = getDirection(nodeMap[p[i - 1]], nodeMap[p[i]], nodeMap[p[i + 1]]);
+      stepsEl.innerHTML += `<li>${dir} to ${p[i + 1]}</li>`;
+    }
+  }
+
+  // open panel & reposition
+  document.getElementById('guide-panel').classList.add('active');
+  setTimeout(positionControls, 90);
+}
+    // ===== markers & interactions =====
     let start=null, end=null;
+    let markers = {};
     buildings.forEach(b=>{
       const marker = L.marker(b.coords).addTo(map);
-      marker.bindPopup(`<b>${b.name}</b><br>${b.info || ''}`);
+      markers[b.name] = marker;
+     marker.bindPopup(`<b>${b.name}</b><br>${b.info || ''}`);
 
       let locked=false;
-      marker.on('mouseover', ()=>{
-        if(!locked) marker.openPopup();
-        setTimeout(()=>{
-          const contentWrapper = document.querySelector('.leaflet-popup-content-wrapper'); if(contentWrapper) contentWrapper.classList.add('pop-float');
-        }, 10);
-      });
+      marker.on('mouseover', ()=>{ if(!locked) marker.openPopup(); setTimeout(()=>{ const cw = document.querySelector('.leaflet-popup-content-wrapper'); if(cw) cw.classList.add('pop-float'); }, 10); });
       marker.on('mouseout', ()=>{ if(!locked) marker.closePopup(); });
-      marker.on('popupclose', ()=>{ locked=false; const contentWrapper = document.querySelector('.leaflet-popup-content-wrapper'); if(contentWrapper) contentWrapper.classList.remove('pop-float'); });
+      marker.on('popupclose', ()=>{ locked=false; const cw = document.querySelector('.leaflet-popup-content-wrapper'); if(cw) cw.classList.remove('pop-float'); });
 
       marker.on('click', ()=>{
         locked = true;
         marker.openPopup();
-        // routing selection only
-        if(!start){ start = b.name; }
-        else if(!end){ end = b.name; if(start === end){ start = end = null; return; } computeRoute(start, end); start = end = null; }
+        if(!start){ start = b.name; showToast(`Start selected: ${start}`); }
+        else if(!end){ end = b.name; if(start === end){ start = end = null; showToast('Selection cleared (same place)'); return; } computeRoute(start, end); start = end = null; }
+      });
+
+      marker.on('dblclick', ()=>{
+        setTarget(b.name);
+        showToast(`Target set: ${b.name}`);
+        marker.openPopup();
       });
     });
 
@@ -404,8 +500,8 @@ desc: "Year 1976, it is the first building that was established to accommodate b
 
     function showModalFromCurrent(){
       if(!currentGallery || !currentGallery.length) return;
+      resetModalTTS();
       modal.style.display = 'flex';
-      // small delay to ensure display:flex applied before opacity transition
       requestAnimationFrame(()=> modal.classList.add('show') );
       setTimeout(()=>{
         modalImg.src = currentGallery[galleryIndex].src;
@@ -415,10 +511,8 @@ desc: "Year 1976, it is the first building that was established to accommodate b
     }
 
     function openInfoModal(name, index){
-      // prefer building gallery; fallback to currentGallery if already set
       const gallery = buildingGalleries[name];
       if(gallery && gallery.length){ currentGallery = gallery.slice(); }
-      // if no building gallery and currentGallery empty => nothing
       if(!currentGallery || !currentGallery.length) return;
       galleryIndex = (typeof index === 'number')? Math.max(0, Math.min(index, currentGallery.length-1)) : 0;
       activeBuildingName = name || activeBuildingName || '';
@@ -426,60 +520,106 @@ desc: "Year 1976, it is the first building that was established to accommodate b
     }
 
     function closeModal(){
+      resetModalTTS();
       modal.classList.remove('show');
-      setTimeout(()=>{ modal.style.display = 'none'; }, 320);
+      setTimeout(()=>{ modal.style.display = 'none'; }, 280);
     }
 
-    // slide transition: current slides out, incoming slides in
     function updateModalImage(direction){
       if(!currentGallery.length) return;
+      resetModalTTS();
       const next = currentGallery[galleryIndex];
       modalTitle.textContent = activeBuildingName || '';
       modalInfo.textContent = next.desc || '';
 
       const wrapper = document.getElementById('modalWrapper');
       wrapper.style.position = 'relative';
+
       const incoming = document.createElement('img');
       incoming.src = next.src;
-      incoming.style.position = 'absolute'; incoming.style.left='50%'; incoming.style.top='50%'; incoming.style.transform='translate(-50%,-50%) translateX(120%)';
-      incoming.style.maxWidth='92%'; incoming.style.maxHeight='82vh'; incoming.style.borderRadius='12px'; incoming.style.transition='transform 0.42s cubic-bezier(.2,.9,.3,1), opacity 0.36s ease'; incoming.style.opacity='0';
+      incoming.style.position = 'absolute';
+      incoming.style.left = '50%';
+      incoming.style.top = '50%';
+      const startX = (direction === 'prev') ? '-120%' : '120%';
+      incoming.style.transform = `translate(-50%,-50%) translateX(${startX})`;
+      incoming.style.maxWidth = '92%'; incoming.style.maxHeight = '68vh';
+      incoming.style.borderRadius = '12px';
+      incoming.style.transition = 'transform 0.38s cubic-bezier(.2,.9,.3,1), opacity 0.32s ease';
+      incoming.style.opacity = '0';
       wrapper.appendChild(incoming);
 
-      requestAnimationFrame(()=>{
-        if(direction === 'prev'){
-          modalImg.style.transform = 'translateX(120%)';
-        } else {
-          modalImg.style.transform = 'translateX(-120%)';
-        }
+      requestAnimationFrame(() => {
+        const exitX = (direction === 'prev') ? '120%' : '-120%';
+        modalImg.style.transform = `translateX(${exitX})`;
         modalImg.style.opacity = '0';
         incoming.style.transform = 'translate(-50%,-50%) translateX(0)';
         incoming.style.opacity = '1';
       });
 
-      setTimeout(()=>{
+      const onTransitionEnd = (e) => {
+        if (e.target !== incoming) return;
+        incoming.removeEventListener('transitionend', onTransitionEnd);
+        modalImg.style.transition = 'none';
         modalImg.src = next.src;
         modalImg.style.transform = 'none';
         modalImg.style.opacity = '1';
-        if(incoming.parentNode) incoming.parentNode.removeChild(incoming);
-      }, 480);
+        void modalImg.offsetWidth;
+        modalImg.style.transition = '';
+        if (incoming.parentNode) incoming.parentNode.removeChild(incoming);
+      };
+      incoming.addEventListener('transitionend', onTransitionEnd);
     }
 
     document.getElementById('modalNext').addEventListener('click', ()=>{
-      if(!currentGallery.length) return; galleryIndex = (galleryIndex + 1) % currentGallery.length; updateModalImage('next');
+      if(!currentGallery.length) return;
+      galleryIndex = (galleryIndex + 1) % currentGallery.length;
+      updateModalImage('next');
     });
     document.getElementById('modalPrev').addEventListener('click', ()=>{
-      if(!currentGallery.length) return; galleryIndex = (galleryIndex - 1 + currentGallery.length) % currentGallery.length; updateModalImage('prev');
+      if(!currentGallery.length) return;
+      galleryIndex = (galleryIndex - 1 + currentGallery.length) % currentGallery.length;
+      updateModalImage('prev');
     });
 
     document.getElementById('closeModal').addEventListener('click', closeModal);
     modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
 
-    // ===== Carousel (NO autoplay) — smoother morphing & slide animation (fixed) =====
+let modalTouchStartX = 0;
+let modalIsDragging = false;
+
+const modalWrapper = document.getElementById('modalWrapper');
+
+modalWrapper.addEventListener('touchstart', e => {
+  modalTouchStartX = e.touches[0].clientX;
+  modalIsDragging = true;
+});
+
+modalWrapper.addEventListener('touchmove', e => {
+  // optional: add visual feedback if desired
+});
+
+modalWrapper.addEventListener('touchend', e => {
+  if (!modalIsDragging) return;
+  modalIsDragging = false;
+  const deltaX = e.changedTouches[0].clientX - modalTouchStartX;
+
+  if (deltaX > 50) {
+    // Swipe right → previous image
+    galleryIndex = (galleryIndex - 1 + currentGallery.length) % currentGallery.length;
+    updateModalImage('prev');
+  } else if (deltaX < -50) {
+    // Swipe left → next image
+    galleryIndex = (galleryIndex + 1) % currentGallery.length;
+    updateModalImage('next');
+  }
+});
+
+    // ===== Carousel (animated) =====
     const places = Object.keys(buildingGalleries);
     let placeIndex = 0;
     const viewportEl = document.getElementById('carouselViewport');
     let isAnimating = false;
-    const animDuration = 440; // ms - match CSS transitions
+    const animDuration = 440;
 
     function makeCard(i, cls) {
       const card = document.createElement('div');
@@ -495,19 +635,15 @@ desc: "Year 1976, it is the first building that was established to accommodate b
 
       if (cls === 'center') {
         card.onclick = () => {
-          // small click "press" effect then open modal
-          card.style.transform = (card.style.transform || '') + ' scale(1.08)';
+          card.style.transform = (card.style.transform || '') + ' scale(1.06)';
           setTimeout(() => {
-            card.style.transform = ''; // remove inline transform; CSS class sets final state
+            card.style.transform = '';
             openInfoModal(places[i], 0);
-          }, 140);
+          }, 120);
         };
       } else {
-        // side cards: clicking them navigates prev/next relative to current placeIndex
-        // assign after creation; these will be replaced when we 'updateOnly'
         card.onclick = () => {
           const nextIdx = (placeIndex + 1) % places.length;
-          // if the clicked index i equals nextIdx, go next; else (it's prev) go prev
           animateCarousel(i === nextIdx ? 'next' : 'prev');
         };
       }
@@ -520,27 +656,23 @@ desc: "Year 1976, it is the first building that was established to accommodate b
       const nextIdx = (placeIndex + 1) % places.length;
 
       if (updateOnly && viewportEl.children.length === 3) {
-        // update existing DOM nodes so transitions appear seamless
         const prevCard = viewportEl.children[0];
         const centerCard = viewportEl.children[1];
         const nextCard = viewportEl.children[2];
 
-        // prev card
         prevCard.className = "carousel-card side";
         prevCard.querySelector("img").src = buildingGalleries[places[prevIdx]][0].src;
         prevCard.querySelector(".label").textContent = places[prevIdx];
         prevCard.onclick = () => animateCarousel('prev');
 
-        // center card
         centerCard.className = "carousel-card center";
         centerCard.querySelector("img").src = buildingGalleries[places[placeIndex]][0].src;
         centerCard.querySelector(".label").textContent = places[placeIndex];
         centerCard.onclick = () => {
-          centerCard.style.transform = (centerCard.style.transform || '') + ' scale(1.08)';
-          setTimeout(() => { centerCard.style.transform = ''; openInfoModal(places[placeIndex], 0); }, 140);
+          centerCard.style.transform = (centerCard.style.transform || '') + ' scale(1.06)';
+          setTimeout(() => { centerCard.style.transform = ''; openInfoModal(places[placeIndex], 0); }, 120);
         };
 
-        // next card
         nextCard.className = "carousel-card side";
         nextCard.querySelector("img").src = buildingGalleries[places[nextIdx]][0].src;
         nextCard.querySelector(".label").textContent = places[nextIdx];
@@ -549,7 +681,6 @@ desc: "Year 1976, it is the first building that was established to accommodate b
         return;
       }
 
-      // fresh render (first time)
       viewportEl.innerHTML = '';
       viewportEl.appendChild(makeCard(prevIdx, 'side'));
       viewportEl.appendChild(makeCard(placeIndex, 'center'));
@@ -560,8 +691,6 @@ desc: "Year 1976, it is the first building that was established to accommodate b
       if (isAnimating) return;
       if (!places.length) return;
       isAnimating = true;
-
-      // ensure there are 3 nodes
       if (viewportEl.children.length !== 3) { renderCarousel(); }
 
       const prevEl = viewportEl.children[0];
@@ -570,42 +699,36 @@ desc: "Year 1976, it is the first building that was established to accommodate b
 
       const newIndex = (dir === 'next') ? (placeIndex + 1) % places.length : (placeIndex - 1 + places.length) % places.length;
 
-      // add animation classes
       centerEl.classList.add('anim-center-out');
-      if (dir === 'prev') centerEl.classList.add('rev'); // slide right when going prev
-      // side cards zoom in (but DO NOT translate)
       prevEl.classList.add('anim-side-zoom');
       nextEl.classList.add('anim-side-zoom');
 
-      // after animation: clear anim classes, update index & swap content to show new positions
       setTimeout(() => {
-        centerEl.classList.remove('anim-center-out','rev');
+        centerEl.classList.remove('anim-center-out');
         prevEl.classList.remove('anim-side-zoom');
         nextEl.classList.remove('anim-side-zoom');
 
         placeIndex = newIndex;
-        // update the DOM nodes to reflect new prev/center/next (this uses updateOnly path)
         renderCarousel(true);
-        // small timeout to ensure CSS updates have taken effect before re-enabling interactions
         setTimeout(()=>{ isAnimating = false; }, 40);
       }, animDuration);
     }
 
-    // touch swipe for carousel
+    document.getElementById('galleryPrev').addEventListener('click', ()=>animateCarousel('prev'));
+    document.getElementById('galleryNext').addEventListener('click', ()=>animateCarousel('next'));
+
+    // touch swipe
     let touchStartX = 0;
     viewportEl.addEventListener('touchstart', (e)=>{ touchStartX = e.touches[0].clientX; });
     viewportEl.addEventListener('touchend', (e)=>{ const dx = e.changedTouches[0].clientX - touchStartX; if(dx < -40) animateCarousel('next'); else if(dx > 40) animateCarousel('prev'); });
 
-    document.getElementById('galleryPrev').addEventListener('click', ()=>animateCarousel('prev'));
-    document.getElementById('galleryNext').addEventListener('click', ()=>animateCarousel('next'));
-
-    // Gallery FAB: show preview images inside the rounded square (small autoplay inside FAB only)
+    // ===== Gallery FAB preview & open/close =====
     (function setupGalleryFab(){
       const fab = document.getElementById('galleryFab');
       const imgEls = [document.getElementById('fabImg0'), document.getElementById('fabImg1')];
       const keys = Object.keys(buildingGalleries);
       const preview = [];
-      for(let i=0;i<Math.min(6, keys.length); i++){ const g = buildingGalleries[keys[i]]; if(g && g[0]) preview.push(g[0].src); }
+      for(let i=0;i<Math.min(8, keys.length); i++){ const g = buildingGalleries[keys[i]]; if(g && g[0]) preview.push(g[0].src); }
       if(preview.length === 0){ imgEls[0].style.opacity=0; }
       else{
         imgEls.forEach((el,i)=>{ el.src = preview[i % preview.length]; if(i===0) el.classList.add('active'); });
@@ -615,7 +738,7 @@ desc: "Year 1976, it is the first building that was established to accommodate b
           idx = (idx+1) % preview.length;
           imgEls[(idx)%2].src = preview[idx];
           imgEls[(idx)%2].classList.add('active');
-        }, 2800);
+        }, 2600);
       }
 
       const miniClose = document.getElementById('galleryMiniClose');
@@ -624,37 +747,224 @@ desc: "Year 1976, it is the first building that was established to accommodate b
       fab.addEventListener('click', ()=>{
         if(panel.classList.contains('active')){
           panel.classList.remove('active');
-          // let the panel slide down, then hide the mini button with a slight delay to allow the gallery to slide
           miniClose.classList.remove('show');
           showToast('Gallery closed');
-        }
-        else{
+        } else {
           renderCarousel();
           panel.classList.add('active');
           miniClose.classList.add('show');
           showToast('Gallery opened');
         }
+        setTimeout(positionControls, 110);
       });
 
-      // mini-close simply closes the panel (slide down). we remove .show immediately so it fades
       miniClose.addEventListener('click', ()=>{
         if(!panel.classList.contains('active')) return;
         panel.classList.remove('active');
         miniClose.classList.remove('show');
         showToast('Gallery closed');
+        setTimeout(positionControls, 110);
       });
     })();
 
-    // Key people FAB: open mini gallery for Brother Rafael Donato
+    // key people FAB
     document.getElementById('keyFab').addEventListener('click', ()=>{
-      const p = keyPeopleGallery[0]; if(!p){ showToast('No key people'); return; }
+      const p = keyPeopleGallery[0];
+      if(!p){ showToast('No key people'); return; }
       currentGallery = [{ src: p.src, desc: p.desc }]; galleryIndex = 0; activeBuildingName = p.name; showModalFromCurrent();
     });
 
-    // Directions FAB
-    document.getElementById('directionsFab').addEventListener('click', ()=>{ start = end = null; if(window.routeLayer){ map.removeLayer(window.routeLayer); window.routeLayer = null; } document.getElementById('directions-panel').style.display = 'block'; showToast('Directions reset'); });
+    // ===== Guide UI & logic (side panel) =====
+    const guideFabEl = document.getElementById('guideFab');
+    const guidePanelEl = document.getElementById('guide-panel');
+    const panelCloseBtn = document.getElementById('panelClose');
+    const resetBtn = document.getElementById('resetDirections');
+    const toggleAudioBtn = document.getElementById('toggleAudio');
+    const guideToggleBtn = document.getElementById('guideToggleBtn');
+    const targetStatus = document.getElementById('targetStatus');
+    const targetNameEl = document.getElementById('targetName');
+    const clearTargetBtn = document.getElementById('clearTarget');
 
-    // keyboard navigation
+    let audioEnabled = false;
+    let guideActive = false;
+    let watchId = null;
+    const triggerRadius = 30;
+    let spokenBuildings = new Set();
+    let targetedBuilding = null;
+    let lastTargetState = 'far';
+
+    guideFabEl.addEventListener('click', ()=>{
+      guidePanelEl.classList.toggle('active');
+      setTimeout(positionControls, 110);
+    });
+    panelCloseBtn.addEventListener('click', ()=>{
+      guidePanelEl.classList.remove('active');
+      setTimeout(positionControls, 110);
+    });
+
+ resetBtn.addEventListener('click', ()=>{
+  if(routeLayer){ map.removeLayer(routeLayer); routeLayer = null; }
+  document.getElementById('steps').innerHTML = '';
+  showToast('Directions reset');
+  spokenBuildings = new Set();
+  currentRoute = null;
+  currentStepIndex = 0;    
+});
+
+    toggleAudioBtn.addEventListener('click', ()=>{
+      audioEnabled = !audioEnabled;
+      toggleAudioBtn.textContent = audioEnabled ? '🔊 Audio: On' : '🔇 Audio: Off';
+      showToast(audioEnabled ? 'Audio enabled' : 'Audio disabled');
+      if(!audioEnabled) speechSynthesis.cancel();
+    });
+
+    guideToggleBtn.addEventListener('click', ()=>{
+      guideActive = !guideActive;
+      guideToggleBtn.textContent = guideActive ? '⏸ Stop Proximity Guide' : '▶ Start Proximity Guide';
+      if(guideActive){
+        spokenBuildings = new Set();
+        lastTargetState = 'far';
+        startGuideMode();
+        showToast('Proximity guide started');
+      } else {
+        stopGuideMode();
+        showToast('Proximity guide stopped');
+      }
+    });
+
+    clearTargetBtn.addEventListener('click', ()=>{
+      if(targetedBuilding){
+        targetedBuilding = null;
+        targetStatus.style.display = 'none';
+        targetNameEl.textContent = '';
+        showToast('Target cleared');
+      } else {
+        showToast('No target set');
+      }
+    });
+
+    function startGuideMode(){
+      if ("geolocation" in navigator) {
+        watchId = navigator.geolocation.watchPosition(checkProximity, (err)=>{ console.warn(err); showToast('GPS error'); }, { enableHighAccuracy:true, maximumAge:1000, timeout:10000 });
+      } else {
+        showToast('Geolocation not supported');
+      }
+    }
+    function stopGuideMode(){
+      if(watchId){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+    }
+function checkProximity(position) {
+  const { latitude, longitude } = position.coords;
+
+  if (currentRoute && currentRoute.length > 0) {
+    // Route is active → step-by-step guidance
+    checkDirectionsProximity(latitude, longitude);
+  } else if (guideActive) {
+    // Campus tour mode (no route, just buildings)
+    checkProximityAll(latitude, longitude);
+  }
+
+  // Always check targeted building if one is set
+  if (targetedBuilding) {
+    checkProximityTargeted(latitude, longitude);
+  }
+}
+function checkProximityAll(lat, lon) {
+  buildings.forEach(building => {
+    const dist = getDistance(lat, lon, building.coords[0], building.coords[1]);
+    if (dist <= triggerRadius && !spokenBuildings.has(building.name)) {
+      const msg = `You are near ${building.name}. ${building.info}`;
+      
+      if (audioEnabled) speak(msg);
+      showToast(msg, 2500); // ✅ toast under proximity guide
+      spokenBuildings.add(building.name);
+    }
+  });
+}
+
+function checkDirectionsProximity(lat, lon) {
+  if (!currentRoute || currentStepIndex >= currentRoute.length) return;
+
+  const [stepLat, stepLon] = currentRoute[currentStepIndex];
+  const dist = getDistance(lat, lon, stepLat, stepLon);
+
+  if (dist <= triggerRadius) {
+    let message = '';
+    const building = buildings.find(b => 
+      Math.abs(b.coords[0] - stepLat) < 1e-5 && 
+      Math.abs(b.coords[1] - stepLon) < 1e-5
+    );
+
+    if (currentStepIndex === 0) {
+      message = `Starting at ${building ? building.name : 'your starting point'}`;
+    } else if (currentStepIndex === currentRoute.length - 1) {
+      message = `You have arrived at your destination: ${building ? building.name : 'the target'}`;
+    } else {
+      const nextCoords = currentRoute[currentStepIndex + 1];
+      const nextBuilding = buildings.find(b => 
+        Math.abs(b.coords[0] - nextCoords[0]) < 1e-5 && 
+        Math.abs(b.coords[1] - nextCoords[1]) < 1e-5
+      );
+      message = `Now proceed towards ${nextBuilding ? nextBuilding.name : 'the next location'}`;
+    }
+
+    if (audioEnabled) speak(message);
+    currentStepIndex++;
+  }
+}
+
+function checkProximityTargeted(lat, lon) {
+  const b = buildings.find(x => x.name === targetedBuilding);
+  if (!b) return;
+
+  const dist = getDistance(lat, lon, b.coords[0], b.coords[1]);
+
+  if (dist <= triggerRadius && lastTargetState !== 'near') {
+    const msg = `You are now near ${b.name}. ${b.info}`;
+    if (audioEnabled) speak(msg);
+    showToast(msg, 2500);
+    lastTargetState = 'near';
+  } else if (dist > triggerRadius && lastTargetState !== 'far') {
+    const msg = `You are ${Math.round(dist)} meters from ${b.name}.`;
+    if (audioEnabled) speak(msg);
+    showToast(msg, 2500);
+    lastTargetState = 'far';
+  }
+}
+
+    function getDistance(lat1, lon1, lat2, lon2){
+      const R = 6371000; const toRad = x => x * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // Text to speech helper (cancels previous)
+    function speak(text){
+      if(!('speechSynthesis' in window)) return;
+      try{ speechSynthesis.cancel(); }catch(e){}
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      speechSynthesis.speak(u);
+    }
+
+    function setTarget(name){
+      targetedBuilding = name;
+      targetStatus.style.display = 'block';
+      targetNameEl.textContent = name;
+      lastTargetState = 'far';
+    }
+
+    // toast
+    function showToast(msg, time=1200){
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show'); t.style.display='block';
+      setTimeout(()=>{ t.style.display='none'; t.classList.remove('show'); }, time);
+    }
+
+    // keyboard nav
     document.addEventListener('keydown', (e)=>{
       if(e.key === 'ArrowLeft'){
         if(modal.classList.contains('show')) document.getElementById('modalPrev').click();
@@ -665,31 +975,161 @@ desc: "Year 1976, it is the first building that was established to accommodate b
       }
     });
 
-    // modal swipe
-    let modalTouchStartX=0; document.getElementById('modalImg').addEventListener('touchstart',(e)=>{ modalTouchStartX = e.touches[0].clientX; });
-    document.getElementById('modalImg').addEventListener('touchend',(e)=>{ const dx = e.changedTouches[0].clientX - modalTouchStartX; if(dx < -40) document.getElementById('modalNext').click(); else if(dx > 40) document.getElementById('modalPrev').click(); });
-
-    // toast
-    function showToast(msg, time=1400){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; t.classList.add('show'); setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.style.display='none',280); }, time); }
-
-    // initial render
+    // initial carousel render
     renderCarousel();
 
-function openGallery() {
-  galleryPanel.classList.add("active");
-  galleryMiniClose.classList.add("show"); // fade button in
-}
+    // ===== Modal TTS single-button behavior =====
+    let modalUtterance = null;
+    let modalIsPaused = false;
+    const ttsToggleBtn = document.getElementById('ttsToggle');
+    const ttsRateInput = document.getElementById('ttsRate');
 
-function closeGallery() {
-  galleryPanel.classList.remove("active");
-  galleryMiniClose.classList.remove("show"); // fade button out
-}
+    function setTtsToggleIcon(isPlaying){
+      const i = ttsToggleBtn.querySelector('i');
+      if(!i) return;
+      if(isPlaying && !modalIsPaused) i.className = 'fa-solid fa-pause';
+      else i.className = 'fa-solid fa-play';
+    }
+    function resetModalTTS(){
+      if('speechSynthesis' in window) try{ speechSynthesis.cancel(); }catch(e){}
+      modalUtterance = null;
+      modalIsPaused = false;
+      setTtsToggleIcon(false);
+    }
 
+    ttsToggleBtn.addEventListener('click', ()=>{
+      if(!('speechSynthesis' in window)){ showToast('Speech not supported'); return; }
 
+      if(!speechSynthesis.speaking && !modalIsPaused){
+        try{ speechSynthesis.cancel(); }catch(e){}
+        modalUtterance = null; modalIsPaused = false;
+        const textParts = [];
+        if(modalTitle.textContent) textParts.push(modalTitle.textContent.trim());
+        if(modalInfo.textContent) textParts.push(modalInfo.textContent.trim());
+        const text = textParts.join('. ').trim();
+        if(!text){ showToast('No text to read'); return; }
+
+        modalUtterance = new SpeechSynthesisUtterance(text);
+        modalUtterance.lang = "en-US";
+        modalUtterance.rate = parseFloat(ttsRateInput.value || 1);
+        modalUtterance.onend = () => { modalUtterance = null; modalIsPaused = false; setTtsToggleIcon(false); };
+        speechSynthesis.speak(modalUtterance);
+        setTtsToggleIcon(true);
+        modalIsPaused = false;
+      } else if(speechSynthesis.speaking && !modalIsPaused){
+        try{ speechSynthesis.pause(); }catch(e){}
+        modalIsPaused = true;
+        setTtsToggleIcon(false);
+      } else if(modalIsPaused){
+        try{ speechSynthesis.resume(); }catch(e){}
+        modalIsPaused = false;
+        setTtsToggleIcon(true);
+      } else {
+        resetModalTTS();
+      }
+    });
+
+    ttsRateInput.addEventListener('input', ()=>{
+      if(modalUtterance) {
+        try{ modalUtterance.rate = parseFloat(ttsRateInput.value); }catch(e){}
+      }
+    });
+
+    // ===== POSITION CONTROLS: robust bottom-stacking (fixed) =====
+    const galleryPanelEl = document.getElementById('galleryPanel');
+    const guidePanelElRef = document.getElementById('guide-panel');
+    const fabGalleryEl = document.getElementById('galleryFab');
+    const fabKeyEl = document.getElementById('keyFab');
+    const fabGuide = document.getElementById('guideFab');
+    const miniCloseBtn = document.getElementById('galleryMiniClose');
+    const leafletZoomEl = document.querySelector('.leaflet-control-zoom');
+
+    function positionControls(){
+      const galleryOpen = galleryPanelEl.classList.contains('active');
+      const guideOpen = guidePanelElRef.classList.contains('active');
+      const base = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--base-gap')) || 16;
+
+      // gallery height
+      const galleryH = galleryOpen ? Math.round(galleryPanelEl.clientHeight) : 0;
+
+      // Stack gallery FAB + key above gallery (same logic used before)
+      if (galleryOpen) {
+        fabGalleryEl.style.bottom = `${galleryH + base}px`;
+        miniCloseBtn.style.bottom = `${galleryH + base + 8}px`;
+        const galleryFabH = fabGalleryEl.getBoundingClientRect().height || 84;
+        fabKeyEl.style.bottom = `${galleryH + base + galleryFabH + 10}px`;
+      } else {
+        fabGalleryEl.style.bottom = `${base}px`;
+        miniCloseBtn.style.bottom = `108px`;
+        fabKeyEl.style.bottom = `140px`;
+      }
+
+      // When guide open, place guide panel above gallery (so both visible)
+      if (guideOpen) {
+        // Put guide panel bottom to be just above gallery
+        guidePanelElRef.style.bottom = `${galleryH + base}px`;
+        // compute guide panel height
+        const guideH = Math.round(guidePanelElRef.clientHeight || 0);
+        // Place guide FAB floating above the guide panel using bottom stacking (stable)
+        const fabBottom = galleryH + base + guideH + 12; // 12px gap
+        fabGuide.style.bottom = `${fabBottom}px`;
+        fabGuide.style.top = '';
+        fabGuide.style.right = '16px';
+        // Leaflet zoom above the FAB (offset by ~66)
+        if (leafletZoomEl){
+          const zoomBottom = fabBottom + 66;
+          leafletZoomEl.style.bottom = `${zoomBottom}px`;
+          leafletZoomEl.style.top = '';
+          leafletZoomEl.style.right = '16px';
+        }
+      } else {
+        // guide is closed
+
+        guidePanelElRef.style.bottom = '';
+
+        // If gallery is open (only), move the guide FAB + zoom up above the gallery too (this is the fix you requested)
+        if (galleryOpen) {
+          // position guide FAB similar elevation to left-side FABs (but on right side)
+          const guideFabBottom = galleryH + base; // same baseline as gallery FAB
+          fabGuide.style.bottom = `${guideFabBottom}px`;
+          fabGuide.style.top = '';
+          fabGuide.style.right = '16px';
+          // put zoom controls above the guide FAB
+          if (leafletZoomEl){
+            const zoomBottom = guideFabBottom + 66;
+            leafletZoomEl.style.bottom = `${zoomBottom}px`;
+            leafletZoomEl.style.top = '';
+            leafletZoomEl.style.right = '16px';
+          }
+        } else {
+          // neither guide nor gallery open: reset to defaults
+          fabGuide.style.top = '';
+          fabGuide.style.bottom = `${base}px`;
+          fabGuide.style.right = `16px`;
+          if (leafletZoomEl){
+            leafletZoomEl.style.top = '';
+            leafletZoomEl.style.bottom = `86px`;
+            leafletZoomEl.style.right = `16px`;
+          }
+        }
+      }
+    }
+
+    // recalc layout on resize and toggles
+    window.addEventListener('resize', ()=> setTimeout(positionControls, 90));
+    ['galleryFab','galleryMiniClose','keyFab','guideFab','panelClose','galleryPrev','galleryNext'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('click', ()=> setTimeout(positionControls, 120));
+    });
+
+    // initial run
+    setTimeout(positionControls, 320);
+
+    // cancel tts helper
+    function cancelAllTTS(){ if('speechSynthesis' in window) try{ speechSynthesis.cancel(); }catch(e){} }
+    document.getElementById('galleryFab').addEventListener('click', ()=>cancelAllTTS());
+    document.getElementById('panelClose').addEventListener('click', ()=>cancelAllTTS());
+    document.getElementById('closeModal').addEventListener('click', ()=>cancelAllTTS());
   </script>
 </body>
 </html>
-
-
-
-
